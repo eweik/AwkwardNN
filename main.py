@@ -4,12 +4,12 @@
 
 import torch
 import numpy as np
-from models.preprocessAwkwardData import get_dataloader
+from AwkwardNN.preprocessAwkwardData import get_dataloader
 import time
-import models.trainAwkwardNet
-from models.config import get_config
-from models.utils import print_time
-from models.preprocessAwkwardData import *
+from AwkwardNN.trainAwkwardNet import AwkwardNNTrainer
+from AwkwardNN.config import get_config
+from AwkwardNN.utils import print_time
+from AwkwardNN.preprocessAwkwardData import *
 
 
 def main(config):
@@ -41,7 +41,7 @@ def main(config):
             max_depth=config.max_depth
         )
 
-    trainer = trainAwkwardNet.AwkwardNNTrainer(config, config.max_depth, 1, 2, dataloader)
+    trainer = AwkwardNNTrainer(config, config.max_depth, 1, 2, dataloader)
     if config.train:
         trainer.train()
     else:

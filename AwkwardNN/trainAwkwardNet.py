@@ -4,11 +4,11 @@
 
 import os
 import torch.nn.functional as F
-from awkwardNet import AwkwardNN
+from AwkwardNN.awkwardNet import AwkwardNN
 import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
-from utils import *
+from AwkwardNN.utils import *
 import shutil
 
 
@@ -89,7 +89,6 @@ class AwkwardNNTrainer(object):
 
     def train_one_epoch(self, epoch):
         losses, accs = AverageMeter(), AverageMeter()
-        self.scheduler.step()
         self.model.train()
         for i, (x, marker, y) in enumerate(self.trainloader):
             x, marker, y = x.to(self.device), marker.to(self.device), y.to(self.device)
@@ -106,6 +105,7 @@ class AwkwardNNTrainer(object):
 
             if i % self.print_freq == 0:
                 print_train_stat(epoch+1, i+self.print_freq, x, self.trainsize, loss, acc)
+        self.scheduler.step()
         return losses.avg, accs.avg
 
     def validate_one_epoch(self, epoch):
