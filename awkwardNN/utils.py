@@ -79,16 +79,18 @@ def print_test_set(test_loss, correct, acc, testsize):
 
 
 def plot_loss_acc(train_loss, train_acc, valid_loss, valid_acc, plot_dir):
-    plt.plot(train_loss)
-    plt.plot(valid_loss)
+    plt.plot(train_loss, label='Train')
+    plt.plot(valid_loss, label='Valid')
     plt.xlabel("iterations")
     plt.ylabel("loss")
+    plt.legend()
     plt.savefig(plot_dir + "/loss.pdf")
     plt.close()
 
-    plt.plot(train_acc)
-    plt.plot(valid_acc)
+    plt.plot(train_acc, label='Train')
+    plt.plot(valid_acc, label='Valid')
     plt.xlabel("iterations")
     plt.ylabel("accuracy")
-    plt.savefig(plot_dir + "/acc.pdf")
+    plt.legend()
+    plt.savefig(plot_dir + "/accuracy.pdf")
 
