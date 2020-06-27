@@ -44,8 +44,11 @@ def main(config):
     trainer = AwkwardNNTrainer(config, config.max_depth, 1, 2, dataloader)
     if config.train:
         trainer.train()
+        trainer.make_plots()
     else:
         trainer.test()
+
+
 
 
 if __name__ == "__main__":

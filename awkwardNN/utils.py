@@ -1,10 +1,11 @@
 # utils.py
 # Helper functions for AwkwardNNpractice
 
+import os
 import torch
 import torch.nn.functional as F
 import time
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 class AverageMeter(object):
@@ -78,17 +79,16 @@ def print_test_set(test_loss, correct, acc, testsize):
 
 
 def plot_loss_acc(train_loss, train_acc, valid_loss, valid_acc, plot_dir):
-    return
     plt.plot(train_loss)
     plt.plot(valid_loss)
     plt.xlabel("iterations")
     plt.ylabel("loss")
-    plt.savefig(plot_dir + "loss.pdf")
+    plt.savefig(plot_dir + "/loss.pdf")
     plt.close()
 
     plt.plot(train_acc)
     plt.plot(valid_acc)
     plt.xlabel("iterations")
     plt.ylabel("accuracy")
-    plt.savefig(plot_dir + "acc.pdf")
+    plt.savefig(plot_dir + "/acc.pdf")
 

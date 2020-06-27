@@ -55,7 +55,9 @@ class AwkwardNNTrainer(object):
             self.testloader = dataloader
             self.testsize = config.test_size
 
-        self.ckpt_dir = './ckpt/' + self.model_name + '/'
+        if not os.path.exists(config.plot_dir):
+            os.makedirs(config.plot_dir)
+        self.ckpt_dir = config.ckpt_dir + '/' + self.model_name + '/'
         if not os.path.exists(self.ckpt_dir):
             os.makedirs(self.ckpt_dir)
 
@@ -202,4 +204,10 @@ class AwkwardNNTrainer(object):
         if best:
             msg += " with best valid acc of {:.3f}".format(self.best_valid_acc)
         print(msg)
+        return
+
+    def make_plots(self):
+        plot_loss_acc(self.total_train_loss, self.total_train_acc,
+                      self.total_valid_loss, self.total_valid_acc,
+                      self.plot_dir)
         return

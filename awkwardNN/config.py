@@ -55,7 +55,7 @@ train_arg.add_argument('--train', type=str2bool, default=True,
                        help='Whether to train or test the model')
 train_arg.add_argument('--learning_rate', type=float, default=0.0003,
                        help='Learning rate value')
-train_arg.add_argument('--epochs', type=int, default=200,
+train_arg.add_argument('--epochs', type=int, default=10,
                        help='# of epochs to train for')
 train_arg.add_argument('--momentum', type=float, default=0.9,
                        help='SGD momentum value')
