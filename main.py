@@ -4,12 +4,12 @@
 
 import torch
 import numpy as np
-from AwkwardNN.preprocessAwkwardData import get_dataloader
+from awkwardNN.preprocessAwkwardData import get_dataloader
 import time
-from AwkwardNN.trainAwkwardNet import AwkwardNNTrainer
-from AwkwardNN.config import get_config
-from AwkwardNN.utils import print_time
-from AwkwardNN.preprocessAwkwardData import *
+from awkwardNN.trainAwkwardNet import AwkwardNNTrainer
+from awkwardNN.config import get_config
+from awkwardNN.utils import print_time
+from awkwardNN.preprocessAwkwardData import *
 
 
 def main(config):

@@ -5,7 +5,7 @@
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
-from AwkwardNN.createAwkwardData import generate_data_target
+from awkwardNN.createAwkwardData import generate_data_target
 import re
 
 

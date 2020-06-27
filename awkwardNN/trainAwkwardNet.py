@@ -4,11 +4,11 @@
 
 import os
 import torch.nn.functional as F
-from AwkwardNN.awkwardNet import AwkwardNN
+from awkwardNN.awkwardNet import AwkwardNN
 import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
-from AwkwardNN.utils import *
+from awkwardNN.utils import *
 import shutil
 
 
