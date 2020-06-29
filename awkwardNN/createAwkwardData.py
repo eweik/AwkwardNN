@@ -10,38 +10,39 @@ import awkward
 def generate_data_target(num_events, prob_nest, prob_sig, prob_bkg, max_len=100, max_depth=10):
     check_probabilities_of_element_options(prob_nest, prob_sig, prob_bkg)
     assert num_events > 0
+    noise_range = max_depth
     targets = generate_binary_targets(num_events)
-    data = generate_data(targets, prob_nest, prob_sig,  max_len, max_depth)
+    data = generate_data(targets, prob_nest, prob_sig, max_depth,  max_len, max_depth)
     data = awkward.fromiter(data)
     return data, targets
 
 
-def generate_data(targets, prob_nest, prob_sig, max_len=100, max_depth=10):
+def generate_data(targets, prob_nest, prob_sig, noise_range, max_len=100, max_depth=10):
     data = []
     for i in targets:
-        event = generate_event(i, prob_nest, prob_sig, max_len, max_depth)
+        event = generate_event(i, prob_nest, prob_sig, noise_range, max_len, max_depth)
         data.append(event)
     return data
 
 
-def generate_event(target, prob_nest, prob_sig, max_len=100, max_depth=10):
+def generate_event(target, prob_nest, prob_sig, noise_range, max_len=100, max_depth=10):
     event = []
     length = np.random.randint(1, max_len + 1)
     for j in range(length):
-        element = get_array_element(target, prob_nest, prob_sig, max_len, max_depth)
+        element = get_array_element(target, prob_nest, prob_sig, noise_range, max_len, max_depth)
         event.append(element)
     return event
 
 
-def get_array_element(target, prob_nest, prob_sig, max_len, max_depth):
+def get_array_element(target, prob_nest, prob_sig, noise_range, max_len, max_depth):
     n = np.random.rand()
     if max_depth <= 1:
         n += prob_nest  # so it can't activate the first `if` statement
     if n < prob_nest:
-        return generate_event(target, prob_nest, prob_sig, max_len, max_depth-1)
+        return generate_event(target, prob_nest, prob_sig, noise_range, max_len, max_depth-1)
     elif n < prob_nest + prob_sig:
         return get_signal(target, max_depth)
-    return get_noise()
+    return get_noise(noise_range)
 
 
 def get_signal(target, max_depth):
@@ -50,14 +51,14 @@ def get_signal(target, max_depth):
     # ie deeper in event, smaller signal magnitude.
     # less deep -> higher signal magnitude
     sign = +1 if target==1 else -1
-    #magnitude = max_depth
-    magnitude = 5
+    magnitude = max_depth
+    #magnitude = 5
     return np.random.normal(sign*magnitude, 1)
 
 
-def get_noise():
-    # noise is random number in range (-5, 5)
-    return np.random.rand() * 10 - 5
+def get_noise(noise_range):
+    # noise is random number in range (-max_depth, +max_depth))
+    return np.random.rand() * (2 * noise_range) - noise_range
 
 
 def generate_binary_targets(size):

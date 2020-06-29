@@ -58,7 +58,7 @@ def print_train_stat(epoch, batch_idx, data, trainsize, loss, acc):
 
 
 def print_valid_stat(valid_loss, valid_acc, validsize, best_valid_acc):
-    correct = int(valid_acc * validsize / 100)
+    correct = int(valid_acc * validsize / 100.)
     print('\nValid set:\n    ', end="")
     end = " [*]\n" if valid_acc > best_valid_acc else "\n"
     print('Avg. loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
