@@ -95,6 +95,7 @@ class AwkwardNNTrainer(object):
         for i, (x, marker, y) in enumerate(self.trainloader):
             x, marker, y = x.to(self.device), marker.to(self.device), y.to(self.device)
             hidden = self.reset(self.batch_size)
+            hidden = hidden.to(self.device)
             self.optimizer.zero_grad()
             with torch.set_grad_enabled(True):
                 y_hat, hidden = self.model(x, marker, hidden)
@@ -116,6 +117,7 @@ class AwkwardNNTrainer(object):
         for i, (x, marker, y) in enumerate(self.validloader):
             x, marker, y = x.to(self.device), marker.to(self.device), y.to(self.device)
             hidden = self.reset(self.batch_size)
+            hidden = hidden.to(self.device)
             with torch.no_grad():
                 y_hat, _ = self.model(x, marker, hidden)
                 loss = get_loss(y, y_hat)
@@ -132,6 +134,7 @@ class AwkwardNNTrainer(object):
         for i, (x, marker, y) in enumerate(self.testloader):
             x, marker, y = x.to(self.device), marker.to(self.device), y.to(self.device)
             hidden = self.reset(self.batch_size)
+            hidden = hidden.to(self.device)
             with torch.no_grad():
                 y_hat, _ = self.model(x, marker, hidden)
                 loss = get_loss(y, y_hat)

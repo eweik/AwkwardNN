@@ -49,8 +49,9 @@ def get_signal(target, max_depth):
     # mean depending on target and depth of signal
     # ie deeper in event, smaller signal magnitude.
     # less deep -> higher signal magnitude
-    sign = np.sign(target)
-    magnitude = max_depth
+    sign = +1 if target==1 else -1
+    #magnitude = max_depth
+    magnitude = 5
     return np.random.normal(sign*magnitude, 1)
 
 

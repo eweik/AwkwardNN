@@ -38,15 +38,15 @@ data_arg.add_argument('--test_size', type=int, default=1000,
                       help='# of data examples used for testing')
 data_arg.add_argument('--batch_size', type=int, default=1,
                       help='# of data points in each batch of data')
-data_arg.add_argument('--prob_nest', type=float, default=0.3,
+data_arg.add_argument('--prob_nest', type=float, default=0.40,
                       help='Probability that element in awkward array is an awkward array')
-data_arg.add_argument('--prob_signal', type=float, default=0.65,
+data_arg.add_argument('--prob_signal', type=float, default=0.50,
                       help='Probability that element in awkward array is signal')
-data_arg.add_argument('--prob_noise', type=float, default=0.05,
+data_arg.add_argument('--prob_noise', type=float, default=0.10,
                       help='Probability that element in awkward array is noise')
-data_arg.add_argument('--max_len', type=int, default=5,
+data_arg.add_argument('--max_len', type=int, default=4,
                       help='Max length for each awkward array and its nested arrays')
-data_arg.add_argument('--max_depth', type=int, default=5,
+data_arg.add_argument('--max_depth', type=int, default=4,
                       help='Max depth for each awkward array')
 
 # Training parameters
@@ -55,7 +55,7 @@ train_arg.add_argument('--train', type=str2bool, default=True,
                        help='Whether to train or test the model')
 train_arg.add_argument('--learning_rate', type=float, default=0.0003,
                        help='Learning rate value')
-train_arg.add_argument('--epochs', type=int, default=100,
+train_arg.add_argument('--epochs', type=int, default=25,
                        help='# of epochs to train for')
 train_arg.add_argument('--momentum', type=float, default=0.9,
                        help='SGD momentum value')
