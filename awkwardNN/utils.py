@@ -46,20 +46,20 @@ def print_time(start):
     return
 
 
-def print_train_stat(epoch, batch_idx, data, trainsize, loss, acc):
+def print_train_stat(epoch, batch_idx, trainsize, loss, acc):
     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tAcc: {:.0f}%'.format(
         epoch,
-        batch_idx * len(data),
+        batch_idx,
         trainsize,
-        100. * batch_idx * len(data) / trainsize,
+        100. * batch_idx / trainsize,
         loss.item(),
         acc.item()))
     return
 
 
-def print_valid_stat(valid_loss, valid_acc, validsize, best_valid_acc):
+def print_valid_stat(epoch, valid_loss, valid_acc, validsize, best_valid_acc):
     correct = int(valid_acc * validsize / 100.)
-    print('\nValid set:\n    ', end="")
+    print('\nValid set - epoch {}:\n    '.format(epoch), end="")
     end = " [*]\n" if valid_acc > best_valid_acc else "\n"
     print('Avg. loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
         valid_loss,

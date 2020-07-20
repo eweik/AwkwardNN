@@ -10,43 +10,40 @@ import awkward
 def generate_data_target(num_events, prob_nest, prob_sig, prob_bkg, max_len=100, max_depth=10):
     check_probabilities_of_element_options(prob_nest, prob_sig, prob_bkg)
     assert num_events > 0
-    noise_range = max_depth
-    targets = generate_binary_targets(num_events)
-    data = generate_data(targets, prob_nest, prob_sig, max_depth,  max_len, max_depth)
+    targets = generate_binary_targets(num_events, prob_sig, prob_bkg)
+    data = generate_data(targets, prob_nest, prob_sig + prob_bkg, max_depth,  max_len, max_depth)
     data = awkward.fromiter(data)
     return data, targets
 
 
-def generate_data(targets, prob_nest, prob_sig, noise_range, max_len=100, max_depth=10):
+def generate_data(targets, prob_nest, prob_data, noise_range, max_len=100, max_depth=10):
     data = []
     for i in targets:
-        event = generate_event(i, prob_nest, prob_sig, noise_range, max_len, max_depth)
+        event = generate_event(i, prob_nest, prob_data, noise_range, max_len, max_depth)
         data.append(event)
     return data
 
 
-def generate_event(target, prob_nest, prob_sig, noise_range, max_len=100, max_depth=10):
+def generate_event(target, prob_nest, prob_data, noise_range, max_len=100, max_depth=10):
     event = []
-    length = np.random.randint(1, max_len + 1)
-    for j in range(length):
-        element = get_array_element(target, prob_nest, prob_sig, noise_range, max_len, max_depth)
+    event_length = np.random.randint(1, max_len + 1)
+    for j in range(event_length):
+        element = get_array_element(target, prob_nest, prob_data, noise_range, max_len, max_depth)
         event.append(element)
     return event
 
 
-def get_array_element(target, prob_nest, prob_sig, noise_range, max_len, max_depth):
+def get_array_element(target, prob_nest, prob_data, noise_range, max_len, max_depth):
     n = np.random.rand()
     if max_depth <= 1:
         n += prob_nest  # so it can't activate the first `if` statement
     if n < prob_nest:
-        return generate_event(target, prob_nest, prob_sig, noise_range, max_len, max_depth-1)
-    elif n < prob_nest + prob_sig:
-        return get_signal(target, max_depth)
-    return get_noise(noise_range)
+        return generate_event(target, prob_nest, prob_data, noise_range, max_len, max_depth-1)
+    return get_data_signal(target, max_depth)
 
 
-def get_signal(target, max_depth):
-    # signal is Gaussian distributed with std deviation 1 and
+def get_data_signal(target, max_depth):
+    # data is Gaussian distributed with std deviation 1 and
     # mean depending on target and depth of signal
     # ie deeper in event, smaller signal magnitude.
     # less deep -> higher signal magnitude
@@ -56,13 +53,11 @@ def get_signal(target, max_depth):
     return np.random.normal(sign*magnitude, 1)
 
 
-def get_noise(noise_range):
-    # noise is random number in range (-max_depth, +max_depth))
-    return np.random.rand() * (2 * noise_range) - noise_range
-
-
-def generate_binary_targets(size):
-    return np.random.choice([0, 1], size)
+def generate_binary_targets(size, prob_sig, prob_bkg):
+    total_prob = prob_sig + prob_bkg
+    new_p_sig = prob_sig / total_prob
+    new_p_bkg = prob_bkg / total_prob
+    return np.random.choice([0, 1], size=size, p=[new_p_sig, new_p_bkg])
 
 
 def check_probabilities_of_element_options(p, q, r):

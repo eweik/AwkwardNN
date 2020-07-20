@@ -1,59 +1,28 @@
-# main.py
-# Awkwarnd NN Project
-# Main program to train Awkward NN
+#
 
-import torch
-import numpy as np
-from awkwardNN.preprocessAwkwardData import get_dataloader
-import time
-from awkwardNN.trainAwkwardNet import AwkwardNNTrainer
-from awkwardNN.config import get_config
-from awkwardNN.utils import print_time
-from awkwardNN.preprocessAwkwardData import *
-
-
-def main(config):
-
-    np.random.seed(config.random_seed)
-    torch.manual_seed(config.random_seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(config.random_seed)
-
-    if config.train:
-        trainloader = get_dataloader(
-            dataset_size=config.train_size, batch_size=config.batch_size,
-            prob_nest=config.prob_nest, prob_signal=config.prob_signal,
-            prob_noise=config.prob_noise, max_len=config.max_len,
-            max_depth=config.max_depth
-        )
-        validloader = get_dataloader(
-            dataset_size=config.valid_size, batch_size=config.batch_size,
-            prob_nest=config.prob_nest, prob_signal=config.prob_signal,
-            prob_noise=config.prob_noise, max_len=config.max_len,
-            max_depth=config.max_depth
-        )
-        dataloader = (trainloader, validloader)
-    else:
-        dataloader = get_dataloader(
-            dataset_size=config.test_size, batch_size=config.batch_size,
-            prob_nest=config.prob_nest, prob_signal=config.prob_signal,
-            prob_noise=config.prob_noise, max_len=config.max_len,
-            max_depth=config.max_depth
-        )
-
-    trainer = AwkwardNNTrainer(config, config.max_depth, 1, 2, dataloader)
-    if config.train:
-        trainer.train()
-        trainer.make_plots()
-    else:
-        trainer.test()
-
-
+import uproot
+from sklearn.model_selection import train_test_split
+from awkwardNN.awkwardNN import awkwardNN
+from awkwardNN.preprocessRoot import get_events
 
 
 if __name__ == "__main__":
-    config, _ = get_config()
-    start = time.time()
-    main(config)
-    print_time(start)
+    tree1 = uproot.open("./data/test_qcd_1000.root")["Delphes"]
+    tree2 = uproot.open("./data/test_ttbar_1000.root")["Delphes"]
+    fields = ["Jet*"]
+    X1 = get_events(tree1, fields)
+    X2 = get_events(tree2, fields)
+    y1 = [1] * len(X1)
+    y2 = [0] * len(X2)
+    X = X1 + X2
+    y = y1 + y2
+    #X = torch.tensor(X, dtype=torch.float32)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+    model = awkwardNN(mode='rnn', max_iter=2, verbose=True)
+    #model = awkwardNN(mode='deepset', max_iter=2, verbose=True)
+    model.train(X_train, y_train)
+    model.test(X_test, y_test)
+
+
+
 

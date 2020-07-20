@@ -1,2 +1,2 @@
 # Awkward NN
-Recurrent Neural Network for Awkward data structure
+A Pytorch Recurrent Neural Network for awkward-array data structure
