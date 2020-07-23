@@ -10,8 +10,17 @@ import os
 import awkwardNN.utils as utils
 from awkwardNN.preprocessRoot import AwkwardDataset
 from awkwardNN.validate_hyperparameters import _validate_hyperparameters
-from awkwardNN.awkwardRNN import AwkwardRNN
-from awkwardNN.deepset import DeepSetNetwork, AwkwardDeepSet
+from awkwardNN.awkwardRNN import AwkwardRNNDoubleJagged, AwkwardRNNSingleJagged
+from awkwardNN.deepset import AwkwardDeepSetSingleJagged, AwkwardDeepSetDoubleJagged
+
+
+def get_train_valid_dataloaders(dataset, shuffle, batch_size, valid_fraction):
+    validsize = int(len(dataset) * valid_fraction)
+    trainsize = len(dataset) - validsize
+    trainset, validset = random_split(dataset, [trainsize, validsize])
+    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=shuffle)
+    validloader = DataLoader(validset, batch_size=batch_size)
+    return trainloader, validloader
 
 
 class awkwardNN(object):
@@ -28,6 +37,7 @@ class awkwardNN(object):
                  beta_1=0.9, beta_2=0.999, epsilon=1e-08,
                  n_iter_no_change=10, lr_decay_step=30,
                  lr_decay_factor=0.1, l2=0, dropout=0,
+                 feature_size_fixed=False,
                  ckpt_dir="./ckpt", model_name="awkwardNN"):
 
         self.mode = mode
@@ -62,6 +72,7 @@ class awkwardNN(object):
         self.best_valid_acc = 0.
         self.best_train_loss = 0.
         self._no_improvement_counter = 0
+        self.feature_size_fixed = feature_size_fixed
         self.model_name = model_name
 
         _validate_hyperparameters(self)
@@ -96,47 +107,13 @@ class awkwardNN(object):
         return
 
     def _init_training(self, X, y):
-        # Get dataloaders
-        dataset = AwkwardDataset(X, y)
-        if self.early_stopping:
-            self.validsize = int(len(dataset) * self.validation_fraction)
-            self.trainsize = len(dataset) - self.validsize
-            trainset, validset = random_split(dataset, [self.trainsize, self.validsize])
-            self.trainloader = DataLoader(trainset, batch_size=self.batch_size,
-                                          shuffle=self.shuffle)
-            self.validloader = DataLoader(validset, batch_size=self.batch_size)
-        else:
-            self.trainsize = len(dataset)
-            self.trainloader = DataLoader(dataset, batch_size=self.batch_size,
-                                          shuffle=self.shuffle)
-
-        # initialize pytorch model
-        if self.mode == 'deepset':
-            self.model = AwkwardDeepSet(dataset.input_size, self.phi_sizes, self.rho_sizes,
-                                        self.activation, self.dropout)
-        else:
-            self.model = AwkwardRNN(self.mode, dataset.input_size, self.hidden_size,
-                                    self.num_layers, self.activation, self.dropout)
+        self._init_dataloaders(X, y)
+        self._init_model()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        #self.model = self.model.to(self.device)
-        if self.solver == 'adam':
-            self.optimizer = optim.Adam(self.model.parameters(),
-                                        lr=self.learning_rate_init,
-                                        betas=(self.beta_1, self.beta_2),
-                                        eps=self.epsilon,
-                                        weight_decay=self.l2)
-        elif self.solver == 'sgd':
-            self.optimizer = optim.SGD(self.model.parameters(),
-                                       lr=self.learning_rate_init,
-                                       momentum=self.momentum,
-                                       nesterov=self.nesterovs_momentum,
-                                       weight_decay=self.l2)
+        # self.model = self.model.to(self.device)
+        self._init_update_algorithm()
 
-        if self.learning_rate == 'adaptive':
-            self.scheduler = lr_scheduler.StepLR(self.optimizer,
-                                                step_size=self.lr_decay_step,
-                                                gamma=self.lr_decay_factor)
-
+        # miscellaneous
         if self.resume_training:
             self._load_checkpoint(best=True)
         self.print_freq = int(len(self.trainloader) / 10)
@@ -239,6 +216,56 @@ class awkwardNN(object):
                 y_hat = self.model(x)
                 pred_log_proba.append(y_hat)
         return pred_log_proba
+
+    def _init_dataloaders(self, X, y):
+        self.dataset = AwkwardDataset(X, y, self.feature_size_fixed)
+        if self.early_stopping:
+            self.validsize = int(len(self.dataset) * self.validation_fraction)
+            self.trainsize = len(self.dataset) - self.validsize
+            trainset, validset = random_split(self.dataset, [self.trainsize, self.validsize])
+            self.trainloader = DataLoader(trainset, batch_size=self.batch_size, shuffle=self.shuffle)
+            self.validloader = DataLoader(validset, batch_size=self.batch_size)
+        else:
+            self.trainsize = len(self.dataset)
+            self.trainloader = DataLoader(self.dataset, batch_size=self.batch_size, shuffle=self.shuffle)
+
+    def _init_model(self):
+        input_size = self.dataset.input_size
+        output_size = self.dataset.output_size
+        kwargs = {'output_size': output_size, 'activation': self.activation,
+                  'dropout': self.dropout}
+        if self.mode == 'deepset':
+            kwargs.update({'phi_sizes': self.phi_sizes, 'rho_sizes': self.rho_sizes})
+            if self.feature_size_fixed:
+                self.model = AwkwardDeepSetSingleJagged(input_size=input_size, **kwargs)
+            else:
+                self.model = AwkwardDeepSetDoubleJagged(**kwargs)
+        else:
+            kwargs.update({'mode': self.mode, 'hidden_size': self.hidden_size,
+                           'num_layers': self.num_layers})
+            if self.feature_size_fixed:
+                self.model = AwkwardRNNSingleJagged(input_size=input_size, **kwargs)
+            else:
+                self.model = AwkwardRNNDoubleJagged(**kwargs)
+
+    def _init_update_algorithm(self):
+        if self.solver == 'adam':
+            self.optimizer = optim.Adam(self.model.parameters(),
+                                        lr=self.learning_rate_init,
+                                        betas=(self.beta_1, self.beta_2),
+                                        eps=self.epsilon,
+                                        weight_decay=self.l2)
+        elif self.solver == 'sgd':
+            self.optimizer = optim.SGD(self.model.parameters(),
+                                       lr=self.learning_rate_init,
+                                       momentum=self.momentum,
+                                       nesterov=self.nesterovs_momentum,
+                                       weight_decay=self.l2)
+
+        if self.learning_rate == 'adaptive':
+            self.scheduler = lr_scheduler.StepLR(self.optimizer,
+                                                step_size=self.lr_decay_step,
+                                                gamma=self.lr_decay_factor)
 
     def _stop_training(self, valid_acc, train_loss):
         if self.early_stopping:

@@ -31,7 +31,7 @@ def _validate_hyperparameters(net):
     if net.epochs <= 0:
         raise ValueError("max_iter must be > 0, got %s." % net.max_iter)
     if not isinstance(net.shuffle, bool):
-        raise ValueError("shuffle must be either True or False %s." % net.shuffle)
+        raise ValueError("shuffle must be either True or False, got %s." % net.shuffle)
     if net.tol < 0:
         raise ValueError("tol must be >= 0, got %s." % net.tol)
     if not isinstance(net.verbose, bool):
@@ -64,6 +64,9 @@ def _validate_hyperparameters(net):
         raise ValueError("lr_decay_step must be > 0, got %s." % net.lr_decay_step)
     if net.lr_decay_factor <= 0.0:
         raise ValueError("lr_decay_factor must be > 0, got %s." % net.lr_decay_factor)
+    if not isinstance(net.feature_size_fixed, bool):
+        raise ValueError("feature_size_fixed must be either True or False,"
+                         " got %s." % net.feature_size_fixed)
     if net.dropout < 0.0:
         raise ValueError("dropout must be >= 0, got %s." % net.dropout)
 

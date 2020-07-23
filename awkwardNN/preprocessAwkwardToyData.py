@@ -1,4 +1,4 @@
-# preprocessAwkwardData.py
+# preprocessAwkwardToyData.py
 # Preprocess Awkward data structure to make it readable for RNN
 #
 
@@ -6,7 +6,7 @@ import torch
 import awkward
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-from awkwardNN.createAwkwardData import generate_data_target
+from awkwardNN.createAwkwardToyData import generate_data_target
 import re
 
 

@@ -1,4 +1,4 @@
-# createAwkwardData.py
+# createAwkwardToyData.py
 # Create nested and variable length dataset for AwkwardNNpractice
 # Binary and Data is nested data based on targets
 

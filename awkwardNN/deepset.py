@@ -32,6 +32,8 @@ class DeepSetNetwork(nn.Module):
             the number of nodes in the hidden layers of the phi network
         :param rho_sizes: {_tuple_, _list_} of _int_
             the number of nodes in the hidden layers of the rho network
+        :param output_size: _int_
+            the number of nodes in the output layer
         :param activation: _str_
             the non-linear function to use
         :param dropout: _float_
@@ -44,27 +46,68 @@ class DeepSetNetwork(nn.Module):
 
     def forward(self, data):
         phi_output = self.phi(data[0])
-        for data_i in data:
+        for data_i in data[1:]:
             phi_output += self.phi(data_i)
         rho_output = self.rho(phi_output)
         return self.output(rho_output)
-        #return F.log_softmax(rho_output, dim=1)
 
 
-class AwkwardDeepSet(nn.Module):
-    def __init__(self, input_size, phi_sizes, rho_sizes, activation, dropout):
-        super(AwkwardDeepSet, self).__init__()
-        output_size = 32
-        self.particle_deepset = DeepSetNetwork(1, phi_sizes, rho_sizes,
-                                               output_size, activation, dropout)
-        self.event_deepset = DeepSetNetwork(output_size, phi_sizes, rho_sizes,
-                                            2, activation, dropout)
+class AwkwardDeepSetSingleJagged(nn.Module):
+    def __init__(self, *, input_size, phi_sizes, rho_sizes,
+                 output_size, activation, dropout):
+        """
+        Deepset for single-jagged data
+        e.g. list of events with varying number of particles with
+             fixed number of features
 
-    def forward(self, event):
-        particle_deepset_output = []
-        for particle in event:
-            particle = torch.tensor([[[i]] for i in particle], dtype=torch.float32)
-            particle_deepset_output.append(self.particle_deepset(particle))
-        event_deepset_output = self.event_deepset(particle_deepset_output)
-        return F.log_softmax(event_deepset_output, dim=1)
+        :param input_size:
+        :param phi_sizes:
+        :param rho_sizes:
+        :param output_size:
+        :param activation:
+        :param dropout:
+        """
+        super(AwkwardDeepSetSingleJagged, self).__init__()
+        self.deepset - DeepSetNetwork(input_size, phi_sizes, rho_sizes,
+                                      output_size, activation, dropout)
+
+    def forward(self, data):
+        output = self.deepset(data)
+        return F.log_softmax(output, dim=1)
+
+
+class AwkwardDeepSetDoubleJagged(nn.Module):
+    def __init__(self, *, phi_sizes, rho_sizes,
+                 output_size, activation, dropout):
+        """
+        Deepset for double-jagged data
+        e.g. list of events with varying number of particles with
+             varying number of features
+
+        :param phi_sizes:
+        :param rho_sizes:
+        :param output_size:
+        :param activation:
+        :param dropout:
+        """
+        super(AwkwardDeepSetDoubleJagged, self).__init__()
+        input_size = 1
+        self.activation = ACTIVATIONS[self.activation]
+        self.deepset1 = DeepSetNetwork(input_size, phi_sizes, rho_sizes,
+                                       rho_sizes[-1], activation, dropout)
+        self.deepset2 = DeepSetNetwork(rho_sizes[-1], phi_sizes, rho_sizes,
+                                       output_size, activation, dropout)
+
+    def forward(self, data):
+        deepset1_output = []
+        for data_i in data:
+            data_i = torch.tensor([[[i]] for i in data_i], dtype=torch.float32)
+            deepset1_output.append(self.deepset1(data_i))
+        deepset2_input = self.activation(deepset1_output)
+        deepset2_output = self.deepset2(deepset2_input)
+        return F.log_softmax(deepset2_output, dim=1)
+
+
+
+
 
