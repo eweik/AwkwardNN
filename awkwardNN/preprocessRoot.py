@@ -34,28 +34,28 @@ def get_events(tree, col_names=None):
     :return:
     '''
     data = []
-    steps = 2
-    for col_batch in tree.iterate(branches=col_names, entrysteps=steps, namedecode='ascii'):
-        data.extend(columns2rows(col_batch))
-        break
-    # for col_batch in tree.iterate(branches=col_names, namedecode='ascii'):
+    # steps = 2
+    # for col_batch in tree.iterate(branches=col_names, entrysteps=steps, namedecode='ascii'):
     #     data.extend(columns2rows(col_batch))
+    #     break
+    for col_batch in tree.iterate(branches=col_names, namedecode='ascii'):
+        data.extend(columns2rows(col_batch))
     return data
 
 
 def columns2rows(column_dict):
-    row_list = []
+    event_list = []
     for key, column in column_dict.items():
         if isinstance(column, np.ndarray):
             continue
-        print("{} {} {}".format(type(column[0][0]), key, column))
-        print("{} {}".format(len(column[0]), len(column[1])))
+        #print("{} {} {}".format(type(column[0][0]), key, column))
+        #print("{} {}".format(len(column[0]), len(column[1])))
         column = check_lorentz_vector(column)
-        if len(row_list) == 0:
-            row_list = partition_rows(column)
+        if len(event_list) == 0:
+            event_list = partition_rows(column)
         else:
-            row_list = append_axis2(row_list, column)
-    return row_list
+            event_list = append_axis2(event_list, column)
+    return event_list
 
 
 def partition_rows(field_list):
@@ -143,8 +143,19 @@ def get_input_size(data, feature_size_fixed):
     :return: _int_
     '''
     if feature_size_fixed:
+        #return data[0].shape[-1]
         return len(data[0][0])
+        #return len(data[0][0][0])
     return 1
+
+
+def wrap_particles_in_list(event_list):
+    # if field is fixed size
+    for event_i in range(len(event_list)):
+        for particle_j in range(len(event_list[event_i])):
+            event_list[event_i][particle_j] = [event_list[event_i][particle_j]]
+    return [torch.tensor(i) for i in event_list]
+    #return event_list
 
 
 class AwkwardDataset(Dataset):
@@ -158,8 +169,10 @@ class AwkwardDataset(Dataset):
         """
         self.y = [torch.tensor(y)]*len(X) if isinstance(y, int) else torch.tensor(y)
         self._output_size = len(set(self.y))
+        #self.X = wrap_particles_in_list(X) if feature_size_fixed else X
         self.X = X
-        self.input_size = get_input_size(X, feature_size_fixed)
+        self.input_size = get_input_size(self.X, feature_size_fixed)
+
 
     def __len__(self):
         return len(self.X)

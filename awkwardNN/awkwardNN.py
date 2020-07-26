@@ -25,6 +25,7 @@ def get_train_valid_dataloaders(dataset, shuffle, batch_size, valid_fraction):
 
 class awkwardNN(object):
     def __init__(self, mode='rnn', *,
+                 filename='',
                  hidden_size=64, num_layers=2,
                  phi_sizes=(64, 64), rho_sizes=(64, 64),
                  activation='relu', solver='adam',
@@ -41,6 +42,7 @@ class awkwardNN(object):
                  ckpt_dir="./ckpt", model_name="awkwardNN"):
 
         self.mode = mode
+        self.filename = filename
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.phi_sizes = phi_sizes

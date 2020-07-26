@@ -74,7 +74,7 @@ class AwkwardRNNDoubleJagged(nn.Module):
                 output, (hidden, cell) = self.net(particle, (hidden, cell))
             else:
                 output, hidden = self.net(particle, hidden)
-            hidden_event, cell_event = _extract_event_state(hidden, cell)
+            hidden_event, cell_event = _extract_event_state(hidden, cell, self.hidden_size)
         return F.log_softmax(self.output(output[-1]), dim=1)
 
 
@@ -86,19 +86,21 @@ class AwkwardRNNSingleJagged(nn.Module):
         e.g. list of events with varying number of particles with
              fixed number of features
         """
+        super(AwkwardRNNSingleJagged, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.mode = mode
         self.net = _get_rnn_subnetwork(mode, input_size, hidden_size,
                                        num_layers, activation, dropout)
-        self.output = nn.Linear(2 * hidden_size, output_size)
+        self.linear = nn.Linear(hidden_size, output_size)
 
     def forward(self, event):
         hidden = torch.zeros(self.num_layers, 1, self.hidden_size)
         cell = torch.zeros(self.num_layers, 1, self.hidden_size)
+        event = torch.tensor([[i] for i in event], dtype=torch.float32)
         if self.mode == 'lstm':
             output, (_, _) = self.net(event, (hidden, cell))
         else:
             output, _ = self.net(event, hidden)
-        return F.log_softmax(self.output(output[-1]), dim=1)
+        return F.log_softmax(self.linear(output[-1]), dim=1)
 

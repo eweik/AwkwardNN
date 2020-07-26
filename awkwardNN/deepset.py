@@ -68,10 +68,11 @@ class AwkwardDeepSetSingleJagged(nn.Module):
         :param dropout:
         """
         super(AwkwardDeepSetSingleJagged, self).__init__()
-        self.deepset - DeepSetNetwork(input_size, phi_sizes, rho_sizes,
+        self.deepset = DeepSetNetwork(input_size, phi_sizes, rho_sizes,
                                       output_size, activation, dropout)
 
     def forward(self, data):
+        data = torch.tensor([[i] for i in data], dtype=torch.float32)
         output = self.deepset(data)
         return F.log_softmax(output, dim=1)
 
@@ -92,18 +93,18 @@ class AwkwardDeepSetDoubleJagged(nn.Module):
         """
         super(AwkwardDeepSetDoubleJagged, self).__init__()
         input_size = 1
-        self.activation = ACTIVATIONS[self.activation]
+        self.activation = ACTIVATIONS[activation]
         self.deepset1 = DeepSetNetwork(input_size, phi_sizes, rho_sizes,
                                        rho_sizes[-1], activation, dropout)
         self.deepset2 = DeepSetNetwork(rho_sizes[-1], phi_sizes, rho_sizes,
                                        output_size, activation, dropout)
 
     def forward(self, data):
-        deepset1_output = []
+        deepset2_input = []
         for data_i in data:
             data_i = torch.tensor([[[i]] for i in data_i], dtype=torch.float32)
-            deepset1_output.append(self.deepset1(data_i))
-        deepset2_input = self.activation(deepset1_output)
+            deepset1_output = self.activation(self.deepset1(data_i))
+            deepset2_input.append(deepset1_output)
         deepset2_output = self.deepset2(deepset2_input)
         return F.log_softmax(deepset2_output, dim=1)
 

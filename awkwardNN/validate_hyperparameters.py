@@ -13,6 +13,9 @@ def _layer_sizes_less_than_zero(layer_dim):
 
 def _validate_hyperparameters(net):
 
+    if not isinstance(net.filename, str) or net.filename.endswith('.root'):
+        raise ValueError("filename must be a string with suffix \".root\", "
+                         " got %s "% net.filename)
     if net.hidden_size < 1:
         raise ValueError("hidden_size must be > 0, got %s." % net.hidden_size)
     if net.num_layers < 1:
