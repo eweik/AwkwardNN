@@ -1,7 +1,7 @@
 _STOCHASTIC_SOLVERS = ['sgd', 'adam']
 _LEARNING_RATES = ["constant", "adaptive"]
 ACTIVATIONS = ['tanh', 'relu']
-MODES = ['gru', 'lstm', 'rnn', 'deepset', 'mixed']
+MODES = ['gru', 'lstm', 'rnn', 'deepset', 'yaml']
 
 
 def _layer_sizes_less_than_zero(layer_dim):

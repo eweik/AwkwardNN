@@ -193,6 +193,41 @@ class AwkwardDataset(Dataset):
         self._input_size = value
 
 
+class AwkwardDatasetFromRoot(Dataset):
+    def __init__(self, roottree, y, *, rnn_fields, lstm_fields,
+                 gru_fields, deepset_fields):
+        """
+        :param rootfile: _str_
+        """
+        self.X_rnn = [get_events(roottree, col_names=fields) for fields in rnn_fields]
+        self.X_lstm = [get_events(roottree, col_names=fields) for fields in lstm_fields]
+        self.X_gru = [get_events(roottree, col_names=fields) for fields in gru_fields]
+        self.X_deepset = [get_events(roottree, col_names=fields) for fields in deepset_fields]
+        self.X = X
+        self.input_size = get_input_size(self.X, feature_size_fixed)
+        self.y = [torch.tensor(y)] * len(X) if isinstance(y, int) else torch.tensor(y)
+        self._output_size = len(set(self.y))
+
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, item):
+        return self.X[item], self.y[item]
+
+    @property
+    def output_size(self):
+        return self._output_size
+
+    @property
+    def input_size(self):
+        return self._input_size
+
+    @input_size.setter
+    def input_size(self, value):
+        self._input_size = value
+
+
 
 
 if __name__ == "__main__":

@@ -23,6 +23,7 @@ if __name__ == "__main__":
     #model = awkwardNN(mode='rnn', max_iter=2, verbose=True, feature_size_fixed=False)
     model = awkwardNN(mode='deepset', max_iter=2, verbose=True, feature_size_fixed=True)
     #model = awkwardNN(mode='deepset', max_iter=2, verbose=True, feature_size_fixed=False)
+
     model.train(X_train, y_train)
     model.test(X_test, y_test)
 

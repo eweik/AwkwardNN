@@ -1,0 +1,60 @@
+- mode: deepset
+  fields:
+  - Particle.Charge
+  - Particle.Mass
+  - Particle.E
+  - Particle.Px
+  - Particle.Py
+  - Particle.Pz
+  - Particle.P
+  - Particle.PT
+  - Particle.Eta
+  - Particle.Phi
+  - Particle.Rapidity
+
+- mode: gru
+  fields:
+  - Track.Charge
+  - Track.P
+  - Track.PT
+  - Track.Eta
+  - Track.Phi
+
+- mode: rnn
+  fields:
+  - Jet.PT
+  - Jet.Eta
+  - Jet.Phi
+  - Jet.T
+  - Jet.Mass
+  - Jet.DeltaEta
+  - Jet.DeltaPhi
+  - Jet.Flavor
+
+- mode: lstm
+  fields:
+  - Photon.PT
+  - Photon.Eta
+  - Photon.Phi
+  - Photon.E
+  - Photon.T
+
+- mode: deepset
+  fields:
+  - Muon.PT
+  - Muon.Eta
+  - Muon.Phi
+  - Muon.T
+  - Muon.Charge
+  - Muon.Particle
+
+- mode: rnn
+  fields:
+  - MissingET.fUniqueID
+  - MissingET.fBits
+  - MissingET.MET
+  - MissingET.Eta
+  - MissingET.Phi
+  - ScalarHT.fUniqueID
+  - ScalarHT.fBits
+  - ScalarHT.HT
