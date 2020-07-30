@@ -9,6 +9,7 @@ def read_awkward_yaml(yamlfile):
 
 
 def get_yaml_model_from_root(rootfile):
+
     dict_file = get_awkward_yaml_dict(rootfile)
     yamlfile = rootfile.rsplit('/', 1)[-1][:-5] + "_awkwardNN.yaml"
     with open(yamlfile, 'w') as file:
