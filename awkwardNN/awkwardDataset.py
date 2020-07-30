@@ -25,7 +25,9 @@ TYPES = [np.ndarray, awkward.array.jagged.JaggedArray]
  '''
 
 
-def get_events(tree, col_names=None):
+
+
+def get_events_from_tree(tree, col_names=None):
     '''
     :param tree: _TTree_
     :param col_names: _list_ of _str_
@@ -193,16 +195,14 @@ class AwkwardDataset(Dataset):
         self._input_size = value
 
 
-class AwkwardDatasetFromRoot(Dataset):
-    def __init__(self, roottree, y, *, rnn_fields, lstm_fields,
+class AwkwardDatasetFromYaml(Dataset):
+    def __init__(self, yamlfile, roottree, y, *, rnn_fields, lstm_fields,
                  gru_fields, deepset_fields):
-        """
-        :param rootfile: _str_
-        """
-        self.X_rnn = [get_events(roottree, col_names=fields) for fields in rnn_fields]
-        self.X_lstm = [get_events(roottree, col_names=fields) for fields in lstm_fields]
-        self.X_gru = [get_events(roottree, col_names=fields) for fields in gru_fields]
-        self.X_deepset = [get_events(roottree, col_names=fields) for fields in deepset_fields]
+        """"""
+        self.X_rnn = [get_events_from_tree(roottree, col_names=fields) for fields in rnn_fields]
+        self.X_lstm = [get_events_from_tree(roottree, col_names=fields) for fields in lstm_fields]
+        self.X_gru = [get_events_from_tree(roottree, col_names=fields) for fields in gru_fields]
+        self.X_deepset = [get_events_from_tree(roottree, col_names=fields) for fields in deepset_fields]
         self.X = X
         self.input_size = get_input_size(self.X, feature_size_fixed)
         self.y = [torch.tensor(y)] * len(X) if isinstance(y, int) else torch.tensor(y)
@@ -239,8 +239,8 @@ if __name__ == "__main__":
     fields = ['Jet.PT', 'Jet.Flavor', 'Jet.TrimmedP4[5]', 'Jet.Tau[5]']
     #fields = ["Particle*"]
     #fields = ["Jet*"]
-    X1 = get_events(tree1, fields)
-    X2 = get_events(tree2, fields)
+    X1 = get_events_from_tree(tree1, fields)
+    X2 = get_events_from_tree(tree2, fields)
     y1 = [1] * len(X1)
     y2 = [0] * len(X2)
     print()

@@ -1,19 +1,19 @@
 from abc import ABC, abstractmethod
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, random_split
+import yaml
 import shutil
 import os
 
 import awkwardNN.utils as utils
-from awkwardNN.preprocessRoot import AwkwardDataset
+from awkwardNN.awkwardDataset import AwkwardDataset
 from awkwardNN.validate_hyperparameters import _validate_hyperparameters
 from awkwardNN.awkwardRNN import AwkwardRNNDoubleJagged, AwkwardRNNSingleJagged
 from awkwardNN.deepset import AwkwardDeepSetSingleJagged, AwkwardDeepSetDoubleJagged
-
+from awkwardNN.utils.yaml_utils import get_default_awkward_yaml_dict_from_rootfile
+from awkwardNN.utils.print_utils import *
 
 def get_train_valid_dataloaders(dataset, shuffle, batch_size, valid_fraction):
     validsize = int(len(dataset) * valid_fraction)
@@ -25,7 +25,53 @@ def get_train_valid_dataloaders(dataset, shuffle, batch_size, valid_fraction):
 
 
 class awkwardNNBase(ABC):
-    def __init__(self, **kwargs):
+    def __init__(self, *, solver='adam', batch_size=1,
+                 learning_rate='constant', learning_rate_init=0.001,
+                 max_iter=200, shuffle=True, tol=0.0001,
+                 verbose=False, resume_training=False,
+                 load_best=True, momentum=0.9,
+                 nesterovs_momentum=True, early_stopping=True,
+                 validation_fraction=0.1, beta_1=0.9,
+                 beta_2=0.999, epsilon=1e-08,
+                 n_iter_no_change=10, lr_decay_step=30,
+                 lr_decay_factor=0.1, l2=0,
+                 dropout=0, ckpt_dir="./ckpt",
+                 model_name='awkwardNN'):
+        self.solver = solver
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
+        self.learning_rate_init = learning_rate_init
+        self.start_epoch = 0
+        self.epochs = max_iter
+        self.shuffle = shuffle
+        self.tol = tol
+        self.verbose = verbose
+        self.resume_training = resume_training
+        self.load_best = load_best
+        self.momentum = momentum
+        self.nesterovs_momentum = nesterovs_momentum
+        self.early_stopping = early_stopping
+        self.validation_fraction = validation_fraction
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+        self.epsilon = epsilon
+        self.n_iter_no_change = n_iter_no_change
+        self.lr_decay_step = lr_decay_step
+        self.lr_decay_factor = lr_decay_factor
+        self.l2 = l2
+        self.dropout = dropout
+        self.best_valid_acc = 0.
+        self.best_train_loss = 0.
+        self._no_improvement_counter = 0
+        self.ckpt_dir = ckpt_dir + '/' + model_name + '/'
+        if not os.path.exists(self.ckpt_dir):
+            os.makedirs(self.ckpt_dir)
+
+        # Keep track of loss, accuracy during training
+        self._train_losses = []
+        self._train_accs = []
+        self._valid_losses = []
+        self._valid_accs = []
         return
 
     @abstractmethod
@@ -37,14 +83,13 @@ class awkwardNNBase(ABC):
             train_loss, train_acc = self._train_one_epoch(epoch)
             valid_loss, valid_acc = self._validate_one_epoch(epoch)
             if self.early_stopping:  # and self.verbose:
-                utils.print_valid_stat(epoch + 1, valid_loss, valid_acc,
-                                       self.validsize, self.best_valid_acc)
+                print_valid_stat(epoch + 1, valid_loss, valid_acc,
+                                 self.validsize, self.best_valid_acc)
 
             if self._stop_training(valid_acc, train_loss):
                 return
             self._check_progress(epoch, valid_acc, train_loss)
             self._update_loss_acc(train_loss, train_acc, valid_loss, valid_acc)
-
         return
 
     @abstractmethod
@@ -61,7 +106,7 @@ class awkwardNNBase(ABC):
                 correct += prediction.eq(y.data.view_as(prediction)).sum()
                 losses.update(loss.item(), len(x))
         acc = 100. * correct / self.testsize
-        utils.print_test_set(losses.avg, correct, acc, self.testsize)
+        print_test_set(losses.avg, correct, acc, self.testsize)
         return losses.avg, acc
 
     @abstractmethod
@@ -98,8 +143,8 @@ class awkwardNNBase(ABC):
                 accs.update(acc.item(), len(x))
 
             if self.verbose and (i % self.print_freq == 0):
-                utils.print_train_stat(epoch + 1, i + self.print_freq,
-                                       self.trainsize, loss, acc)
+                print_train_stat(epoch + 1, i + self.print_freq,
+                                 self.trainsize, loss, acc)
         if self.learning_rate == 'adaptive':
             self.scheduler.step()
         return losses.avg, accs.avg
@@ -248,65 +293,16 @@ class awkwardNN(awkwardNNBase):
     def __init__(self, mode='rnn', *,
                  hidden_size=64, num_layers=2,
                  phi_sizes=(64, 64), rho_sizes=(64, 64),
-                 activation='relu', solver='adam',
-                 batch_size=1, learning_rate='constant',
-                 learning_rate_init=0.001, max_iter=200,
-                 shuffle=True, tol=0.0001, verbose=False,
-                 resume_training=False, load_best=True,
-                 momentum=0.9, nesterovs_momentum=True,
-                 early_stopping=True, validation_fraction=0.1,
-                 beta_1=0.9, beta_2=0.999, epsilon=1e-08,
-                 n_iter_no_change=10, lr_decay_step=30,
-                 lr_decay_factor=0.1, l2=0, dropout=0,
-                 feature_size_fixed=False,
-                 ckpt_dir="./ckpt", model_name="awkwardNN"):
+                 activation='relu', **kwargs):
 
+        super().__init__(**kwargs)
         self.mode = mode
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.phi_sizes = phi_sizes
         self.rho_sizes = rho_sizes
         self.activation = activation
-        self.solver = solver
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
-        self.learning_rate_init = learning_rate_init
-        self.start_epoch = 0
-        self.epochs = max_iter
-        self.shuffle = shuffle
-        self.tol = tol
-        self.verbose = verbose
-        self.resume_training = resume_training
-        self.load_best = load_best
-        self.momentum = momentum
-        self.nesterovs_momentum = nesterovs_momentum
-        self.early_stopping = early_stopping
-        self.validation_fraction = validation_fraction
-        self.beta_1 = beta_1
-        self.beta_2 = beta_2
-        self.epsilon = epsilon
-        self.n_iter_no_change = n_iter_no_change
-        self.lr_decay_step = lr_decay_step
-        self.lr_decay_factor = lr_decay_factor
-        self.l2 = l2
-        self.dropout = dropout
-        self.best_valid_acc = 0.
-        self.best_train_loss = 0.
-        self._no_improvement_counter = 0
-        self.feature_size_fixed = feature_size_fixed
-        self.model_name = model_name
-
         _validate_hyperparameters(self)
-
-        # Keep track of loss, accuracy during training
-        self._train_losses = []
-        self._train_accs = []
-        self._valid_losses = []
-        self._valid_accs = []
-
-        self.ckpt_dir = ckpt_dir + '/' + self.model_name + '/'
-        if not os.path.exists(self.ckpt_dir):
-            os.makedirs(self.ckpt_dir)
 
     def train(self, X, y):
         self._init_training(X, y)
@@ -387,7 +383,7 @@ class awkwardNN(awkwardNNBase):
 
 class awkwardNN_fromYaml(awkwardNNBase):
     def __init__(self, yamlfile, **kwargs):
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
         self.yamlfile = yamlfile
 
     def train(self, rootfile, y):
@@ -416,18 +412,26 @@ class awkwardNN_fromYaml(awkwardNNBase):
     def predict_log_proba(self, rootfile):
         return
 
-    def _init_dataloaders(selfself, rootfile, y):
-
+    def _init_dataloaders(self, rootfile, y):
+        if self.yamlfile:
+            pass
         return
 
     def _init_model(self):
-
+        if self.yamlfile:
+            pass
+        else:
+            pass
         return
 
     @staticmethod
-    def get_yaml(rootfile):
+    def get_yaml_model(rootfile, saveto=''):
+        yaml_dict = get_default_awkward_yaml_dict_from_rootfile(rootfile)
+        if saveto:
+            with open(saveto, 'w') as file:
+                yaml.dump(yaml_dict, file, sort_keys=False)
+        return yaml_dict
 
-        return
+    def get_yaml_model(self, saveto):
 
-    def get_yaml(self, rootfile):
         return

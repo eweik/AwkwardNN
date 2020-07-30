@@ -3,7 +3,7 @@
 import uproot
 from sklearn.model_selection import train_test_split
 from awkwardNN.awkwardNN import awkwardNN
-from awkwardNN.preprocessRoot import get_events
+from awkwardNN.awkwardDataset import get_events_from_tree
 from abc import ABC, abstractmethod
 
 
