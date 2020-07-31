@@ -7,13 +7,15 @@ import yaml
 import shutil
 import os
 
-import awkwardNN.utils as utils
-from awkwardNN.awkwardDataset import AwkwardDataset
+
+from awkwardNN.awkwardDataset import AwkwardDataset, AwkwardDatasetFromYaml
 from awkwardNN.validate_hyperparameters import _validate_hyperparameters
 from awkwardNN.awkwardRNN import AwkwardRNNDoubleJagged, AwkwardRNNSingleJagged
 from awkwardNN.deepset import AwkwardDeepSetSingleJagged, AwkwardDeepSetDoubleJagged
-from awkwardNN.utils.yaml_utils import get_default_awkward_yaml_dict_from_rootfile
+import awkwardNN.utils as utils
+from awkwardNN.utils.yaml_utils import *
 from awkwardNN.utils.print_utils import *
+from awkwardNN.utils.root_utils import get_roottree
 
 def get_train_valid_dataloaders(dataset, shuffle, batch_size, valid_fraction):
     validsize = int(len(dataset) * valid_fraction)
@@ -306,13 +308,13 @@ class awkwardNN(awkwardNNBase):
 
     def train(self, X, y):
         self._init_training(X, y)
-        super.train()
+        super().train()
         return
 
     def _init_training(self, X, y):
         self._init_dataloaders(X, y)
         self._init_model()
-        super._init_training()
+        super()._init_training()
         return
 
     def test(self, X, y):
@@ -321,7 +323,7 @@ class awkwardNN(awkwardNNBase):
 
     def _init_test(self, X, y):
         dataset = AwkwardDataset(X, y)
-        super._init_test(dataset)
+        super()._init_test(dataset)
 
     def predict(self, X):
         predictions = []
@@ -359,7 +361,7 @@ class awkwardNN(awkwardNNBase):
 
     def _init_dataloaders(self, X, y):
         self.dataset = AwkwardDataset(X, y, self.feature_size_fixed)
-        super._init_dataloaders()
+        super()._init_dataloaders()
 
     def _init_model(self):
         input_size = self.dataset.input_size
@@ -382,19 +384,22 @@ class awkwardNN(awkwardNNBase):
 
 
 class awkwardNN_fromYaml(awkwardNNBase):
-    def __init__(self, yamlfile, **kwargs):
+    def __init__(self, yamlfile='', **kwargs):
         super().__init__(**kwargs)
-        self.yamlfile = yamlfile
+        self.yamldict = None if yamlfile == '' else get_yaml_dict_list(yamlfile)
 
     def train(self, rootfile, y):
         self._init_training(rootfile, y)
-        super.train()
+        super().train()
         return
 
     def _init_training(self, rootfile, y):
-        self._init_dataloaders(rootfile, y)
+        roottree = get_roottree(rootfile)
+        if self.yamldict == None:
+            self.yamldict = get_default_yaml_dict_from_rootfile(rootfile)
+        self._init_dataloaders(roottree, y)
         self._init_model()
-        super._init_training()
+        super()._init_training()
         return
 
     def test(self, rootfile, y):
@@ -412,13 +417,13 @@ class awkwardNN_fromYaml(awkwardNNBase):
     def predict_log_proba(self, rootfile):
         return
 
-    def _init_dataloaders(self, rootfile, y):
-        if self.yamlfile:
-            pass
+    def _init_dataloaders(self, roottree, y):
+        self.dataset = AwkwardDatasetFromYaml(self.yamldict, roottree, y)
+        super()._init_dataloaders()
         return
 
     def _init_model(self):
-        if self.yamlfile:
+        if self._is_preinitialized():
             pass
         else:
             pass
@@ -426,12 +431,13 @@ class awkwardNN_fromYaml(awkwardNNBase):
 
     @staticmethod
     def get_yaml_model(rootfile, saveto=''):
-        yaml_dict = get_default_awkward_yaml_dict_from_rootfile(rootfile)
+        yaml_dict = get_default_yaml_dict_from_rootfile(rootfile)
         if saveto:
             with open(saveto, 'w') as file:
                 yaml.dump(yaml_dict, file, sort_keys=False)
         return yaml_dict
 
-    def get_yaml_model(self, saveto):
+    def get_yaml_model(self, saveto=''):
 
         return
+

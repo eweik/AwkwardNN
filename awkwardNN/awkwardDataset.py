@@ -27,7 +27,7 @@ TYPES = [np.ndarray, awkward.array.jagged.JaggedArray]
 
 
 
-def get_events_from_tree(tree, col_names=None):
+def get_events_from_tree(roottree, col_names=None):
     '''
     :param tree: _TTree_
     :param col_names: _list_ of _str_
@@ -40,7 +40,7 @@ def get_events_from_tree(tree, col_names=None):
     # for col_batch in tree.iterate(branches=col_names, entrysteps=steps, namedecode='ascii'):
     #     data.extend(columns2rows(col_batch))
     #     break
-    for col_batch in tree.iterate(branches=col_names, namedecode='ascii'):
+    for col_batch in roottree.iterate(branches=col_names, namedecode='ascii'):
         data.extend(columns2rows(col_batch))
     return data
 
@@ -130,8 +130,8 @@ def _append_axis1(a, b):
 def check_lorentz_vector(field):
     '''
     What to do with TLorentzVector object. Currently just return the energy.
-    :param field: _list_ of features
-    :return: _float_
+    :param field: list
+    :return: float
     '''
     if isinstance(field[0][0], uproot_methods.classes.TLorentzVector.TLorentzVector):
         return field.E
@@ -141,8 +141,8 @@ def check_lorentz_vector(field):
 def get_input_size(data, feature_size_fixed):
     '''
     Determines input size for Awkward-NN. Assume data is triple-nested.
-    :param data: _list_ of _list_ of numbers
-    :return: _int_
+    :param data: list of list
+    :return: int
     '''
     if feature_size_fixed:
         #return data[0].shape[-1]
@@ -196,16 +196,15 @@ class AwkwardDataset(Dataset):
 
 
 class AwkwardDatasetFromYaml(Dataset):
-    def __init__(self, yamlfile, roottree, y, *, rnn_fields, lstm_fields,
+    def __init__(self, yaml_dict_list, roottree, y, *, rnn_fields, lstm_fields,
                  gru_fields, deepset_fields):
         """"""
-        self.X_rnn = [get_events_from_tree(roottree, col_names=fields) for fields in rnn_fields]
-        self.X_lstm = [get_events_from_tree(roottree, col_names=fields) for fields in lstm_fields]
-        self.X_gru = [get_events_from_tree(roottree, col_names=fields) for fields in gru_fields]
-        self.X_deepset = [get_events_from_tree(roottree, col_names=fields) for fields in deepset_fields]
-        self.X = X
-        self.input_size = get_input_size(self.X, feature_size_fixed)
-        self.y = [torch.tensor(y)] * len(X) if isinstance(y, int) else torch.tensor(y)
+        self.data = []
+        for yaml_dict in yaml_dict_list:
+            for fields in yaml_dict.values():
+                self.data.append(get_events_from_tree(roottree, fields))
+        # self.input_size = get_input_size(self.X, feature_size_fixed)
+        self.y = [torch.tensor(y)] * len(self.data[0]) if isinstance(y, int) else torch.tensor(y)
         self._output_size = len(set(self.y))
 
 
