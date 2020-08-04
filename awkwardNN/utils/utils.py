@@ -28,8 +28,8 @@ class AverageMeter(object):
 
 
 def get_loss(y, log_class_prob):
-    #loss = F.nll_loss(log_class_prob, y)
-    loss = F.cross_entropy(log_class_prob, y)
+    loss = F.nll_loss(log_class_prob, y)
+    # loss = F.cross_entropy(log_class_prob, y)
     return loss
 
 

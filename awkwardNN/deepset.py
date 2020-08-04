@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-ACTIVATIONS = {'tanh': F.tanh, 'relu': F.relu}
+ACTIVATIONS = {'tanh': torch.tanh, 'relu': torch.relu}
 
 
 class FCNetwork(nn.Module):

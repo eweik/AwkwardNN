@@ -8,7 +8,7 @@ def print_time(start):
 
 
 def print_train_stat(epoch, batch_idx, trainsize, loss, acc):
-    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tAcc: {:.0f}%'.format(
+    print('Train Epoch: {} [{}/{} ({:.0f}%)] \tLoss: {:.6f}\tAcc: {:.0f}%'.format(
         epoch,
         batch_idx,
         trainsize,

@@ -11,8 +11,8 @@ def get_yaml_dict_list(yamlfile):
 def get_default_yaml_dict_from_rootfile(rootfile):
     roottree = get_roottree(rootfile)
     fields = [i.decode("ascii") for i in roottree.allkeys()]
-    dict_file = [{'mode': 'rnn', 'fields': fields}]
-    return dict_file
+    dict_list = [{'mode': 'rnn', 'fields': fields}]
+    return dict_list
 
 
 if __name__ == "__main__":

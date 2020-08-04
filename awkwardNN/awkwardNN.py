@@ -7,15 +7,15 @@ import yaml
 import shutil
 import os
 
-
 from awkwardNN.awkwardDataset import AwkwardDataset, AwkwardDatasetFromYaml
 from awkwardNN.validate_hyperparameters import _validate_hyperparameters
 from awkwardNN.awkwardRNN import AwkwardRNNDoubleJagged, AwkwardRNNSingleJagged
 from awkwardNN.deepset import AwkwardDeepSetSingleJagged, AwkwardDeepSetDoubleJagged
-import awkwardNN.utils as utils
+from awkwardNN.awkwardMixed import AwkwardMixed
+import awkwardNN.utils.utils as utils
 from awkwardNN.utils.yaml_utils import *
 from awkwardNN.utils.print_utils import *
-from awkwardNN.utils.root_utils import get_roottree
+
 
 def get_train_valid_dataloaders(dataset, shuffle, batch_size, valid_fraction):
     validsize = int(len(dataset) * valid_fraction)
@@ -66,6 +66,7 @@ class awkwardNNBase(ABC):
         self.best_train_loss = 0.
         self._no_improvement_counter = 0
         self.ckpt_dir = ckpt_dir + '/' + model_name + '/'
+        self.model_name = model_name
         if not os.path.exists(self.ckpt_dir):
             os.makedirs(self.ckpt_dir)
 
@@ -188,7 +189,6 @@ class awkwardNNBase(ABC):
                                           batch_size=self.batch_size,
                                           shuffle=self.shuffle)
 
-
     def _update_loss_acc(self, train_loss, train_acc, valid_loss, valid_acc):
         self._train_losses.append(train_loss)
         self._train_accs.append(train_acc)
@@ -304,7 +304,7 @@ class awkwardNN(awkwardNNBase):
         self.phi_sizes = phi_sizes
         self.rho_sizes = rho_sizes
         self.activation = activation
-        _validate_hyperparameters(self)
+        # _validate_hyperparameters(self)
 
     def train(self, X, y):
         self._init_training(X, y)
@@ -360,44 +360,37 @@ class awkwardNN(awkwardNNBase):
         return pred_log_proba
 
     def _init_dataloaders(self, X, y):
-        self.dataset = AwkwardDataset(X, y, self.feature_size_fixed)
+        self.dataset = AwkwardDataset(X, y)
         super()._init_dataloaders()
 
     def _init_model(self):
-        input_size = self.dataset.input_size
         output_size = self.dataset.output_size
         kwargs = {'output_size': output_size, 'activation': self.activation,
                   'dropout': self.dropout}
         if self.mode == 'deepset':
             kwargs.update({'phi_sizes': self.phi_sizes, 'rho_sizes': self.rho_sizes})
-            if self.feature_size_fixed:
-                self.model = AwkwardDeepSetSingleJagged(input_size=input_size, **kwargs)
-            else:
-                self.model = AwkwardDeepSetDoubleJagged(**kwargs)
+            self.model = AwkwardDeepSetDoubleJagged(**kwargs)
         else:
             kwargs.update({'mode': self.mode, 'hidden_size': self.hidden_size,
                            'num_layers': self.num_layers})
-            if self.feature_size_fixed:
-                self.model = AwkwardRNNSingleJagged(input_size=input_size, **kwargs)
-            else:
-                self.model = AwkwardRNNDoubleJagged(**kwargs)
+            self.model = AwkwardRNNDoubleJagged(**kwargs)
 
 
 class awkwardNN_fromYaml(awkwardNNBase):
     def __init__(self, yamlfile='', **kwargs):
         super().__init__(**kwargs)
-        self.yamldict = None if yamlfile == '' else get_yaml_dict_list(yamlfile)
+        if yamlfile == '':
+            self.yaml_dict_list = [{"mode": "rnn", "fields": None}]
+        else:
+            self.yaml_dict_list = get_yaml_dict_list(yamlfile)
 
-    def train(self, rootfile, y):
-        self._init_training(rootfile, y)
+    def train(self, data_dict_list):
+        self._init_training(data_dict_list)
         super().train()
         return
 
-    def _init_training(self, rootfile, y):
-        roottree = get_roottree(rootfile)
-        if self.yamldict == None:
-            self.yamldict = get_default_yaml_dict_from_rootfile(rootfile)
-        self._init_dataloaders(roottree, y)
+    def _init_training(self, data_dict_list):
+        self._init_dataloaders(data_dict_list)
         self._init_model()
         super()._init_training()
         return
@@ -417,27 +410,35 @@ class awkwardNN_fromYaml(awkwardNNBase):
     def predict_log_proba(self, rootfile):
         return
 
-    def _init_dataloaders(self, roottree, y):
-        self.dataset = AwkwardDatasetFromYaml(self.yamldict, roottree, y)
+    def _init_dataloaders(self, data_dict_list):
+        self.dataset = AwkwardDatasetFromYaml(data_dict_list, self.yaml_dict_list)
         super()._init_dataloaders()
         return
 
     def _init_model(self):
-        if self._is_preinitialized():
-            pass
-        else:
-            pass
+        mode_list = self.dataset.modes
+        output_size = self.dataset.output_size
+        hidden_size = 100
+        num_layers = 1
+        phi_sizes = (32, 74)
+        rho_sizes = (50, 60)
+        activation = 'tanh'
+        dropout = 0
+        self.model = AwkwardMixed(mode_list, hidden_size, num_layers, phi_sizes,
+                                  rho_sizes, output_size, activation, dropout)
         return
 
     @staticmethod
-    def get_yaml_model(rootfile, saveto=''):
-        yaml_dict = get_default_yaml_dict_from_rootfile(rootfile)
+    def get_yaml_model_from_rootfile(rootfile, saveto=''):
+        yaml_dict_list = get_default_yaml_dict_from_rootfile(rootfile)
         if saveto:
             with open(saveto, 'w') as file:
-                yaml.dump(yaml_dict, file, sort_keys=False)
-        return yaml_dict
+                yaml.dump(yaml_dict_list, file, sort_keys=False)
+        return yaml_dict_list
 
-    def get_yaml_model(self, saveto=''):
-
-        return
+    def get_yaml_model(self, saveto=None):
+        if saveto:
+            with open(saveto, 'w') as file:
+                yaml.dump(self.yaml_dict_list, file, sort_keys=False)
+        return self.yaml_dict_list
 

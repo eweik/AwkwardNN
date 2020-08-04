@@ -1,4 +1,6 @@
 torch
 numpy
+uproot
 awkward
 scikit-learn
+pyyaml

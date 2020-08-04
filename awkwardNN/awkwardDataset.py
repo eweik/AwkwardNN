@@ -5,26 +5,14 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from awkwardNN.utils.root_utils import get_roottree
+from awkwardNN.utils.yaml_utils import get_yaml_dict_list
+
 TYPES = [np.ndarray, awkward.array.jagged.JaggedArray]
 
 # fields that don't work:
 # b'Particle.fBits', b'Track.fBits', b'Tower.fBits'
 # b'EFlowTrack.fBits', b'EFlowPhoton.fBits', b'EFlowNeutralHadron.fBits'
-
-'''
-# keys in test_qcd_1000.root
-[b'Event', b'Event_size', b'Particle', b'Particle_size', b'Track',
- b'Track_size', b'Tower', b'Tower_size', b'EFlowTrack', b'EFlowTrack_size',
- b'EFlowPhoton', b'EFlowPhoton_size', b'EFlowNeutralHadron', b'EFlowNeutralHadron_size',
- b'Jet', b'Jet_size', b'Electron', b'Electron_size', b'Photon',
- b'Photon_size', b'Muon', b'Muon_size', b'FatJet', b'FatJet_size',
- b'MissingET', b'MissingET_size', b'ScalarHT', b'ScalarHT_size']
- 
- # trial
- ['Particle.E', 'Particle.P[xyz]']
- '''
-
-
 
 
 def get_events_from_tree(roottree, col_names=None):
@@ -37,7 +25,7 @@ def get_events_from_tree(roottree, col_names=None):
     '''
     data = []
     # steps = 2
-    # for col_batch in tree.iterate(branches=col_names, entrysteps=steps, namedecode='ascii'):
+    # for col_batch in roottree.iterate(branches=col_names, entrysteps=steps, namedecode='ascii'):
     #     data.extend(columns2rows(col_batch))
     #     break
     for col_batch in roottree.iterate(branches=col_names, namedecode='ascii'):
@@ -133,8 +121,11 @@ def check_lorentz_vector(field):
     :param field: list
     :return: float
     '''
-    if isinstance(field[0][0], uproot_methods.classes.TLorentzVector.TLorentzVector):
-        return field.E
+    try:
+        if isinstance(field[0][0], uproot_methods.classes.TLorentzVector.TLorentzVector):
+            return field.E
+    except:
+        pass
     return field
 
 
@@ -151,7 +142,7 @@ def get_input_size(data, feature_size_fixed):
     return 1
 
 
-def wrap_particles_in_list(event_list):
+def wrap_fields_in_list(event_list):
     # if field is fixed size
     for event_i in range(len(event_list)):
         for particle_j in range(len(event_list[event_i])):
@@ -163,18 +154,17 @@ def wrap_particles_in_list(event_list):
 class AwkwardDataset(Dataset):
     def __init__(self, X, y, feature_size_fixed=False):
         """
-        :param X: _list_ of _list_ of _list_ of {_int_, _float_}
-        :param y: _int_ or _list_ of _int_
-        :param feature_size_fixed: _bool_
+        :param X: list
+        :param y: int
+        :param feature_size_fixed: bool
             specifies whether the final nested list (e.g. the list
             of features for a particle) has a fixed size or not
         """
         self.y = [torch.tensor(y)]*len(X) if isinstance(y, int) else torch.tensor(y)
-        self._output_size = len(set(self.y))
-        #self.X = wrap_particles_in_list(X) if feature_size_fixed else X
+        self._output_size = len(set(y))
+        self.X = wrap_fields_in_list(X) if feature_size_fixed else X
         self.X = X
         self.input_size = get_input_size(self.X, feature_size_fixed)
-
 
     def __len__(self):
         return len(self.X)
@@ -196,60 +186,43 @@ class AwkwardDataset(Dataset):
 
 
 class AwkwardDatasetFromYaml(Dataset):
-    def __init__(self, yaml_dict_list, roottree, y, *, rnn_fields, lstm_fields,
-                 gru_fields, deepset_fields):
+    def __init__(self, data_dict_list, yaml_dict_list):
         """"""
-        self.data = []
-        for yaml_dict in yaml_dict_list:
-            for fields in yaml_dict.values():
-                self.data.append(get_events_from_tree(roottree, fields))
-        # self.input_size = get_input_size(self.X, feature_size_fixed)
-        self.y = [torch.tensor(y)] * len(self.data[0]) if isinstance(y, int) else torch.tensor(y)
-        self._output_size = len(set(self.y))
+        self._modes = []
+        self._datasets = []
 
+        for network_dict in yaml_dict_list:
+            self._modes.append(network_dict['mode'])
+            fields = network_dict['fields']
+
+            X, y = [], []
+            for data_dict in data_dict_list:
+                roottree = get_roottree(data_dict['rootfile'])
+                events = get_events_from_tree(roottree, fields)
+                X += events
+                y += len(events) * [data_dict['target']]
+            dataset = AwkwardDataset(X, y)
+            self._datasets.append(dataset)
 
     def __len__(self):
-        return len(self.X)
+        # total number of events is same as total number in one of the datasets
+        return len(self._datasets[0])
 
     def __getitem__(self, item):
-        return self.X[item], self.y[item]
+        data = []
+        for dataset in self._datasets:
+            x, y = dataset[item]
+            data.append(x)
+        return data, y
 
     @property
     def output_size(self):
-        return self._output_size
+        return self._datasets[0].output_size
 
     @property
-    def input_size(self):
-        return self._input_size
+    def modes(self):
+        return self._modes
 
-    @input_size.setter
-    def input_size(self, value):
-        self._input_size = value
-
-
-
-
-if __name__ == "__main__":
-    tree1 = uproot.open("./data/test_qcd_1000.root")["Delphes"]
-    tree2 = uproot.open("./data/test_ttbar_1000.root")["Delphes"]
-    deepset_fields = [['Jet.fUniqueID'], ['Jet.PT', 'Jet.Flavor']]
-    rnn_fields = [['Jet.Eta', 'Jet.Tau[5]'], ['Jet.Mass', 'Jet.TrimmedP4[5]']]
-    #fields = ['Jet.PT', 'Jet.Mass', 'Jet.Tau[5]']
-    fields = ['Jet.PT', 'Jet.Flavor', 'Jet.TrimmedP4[5]', 'Jet.Tau[5]']
-    #fields = ["Particle*"]
-    #fields = ["Jet*"]
-    X1 = get_events_from_tree(tree1, fields)
-    X2 = get_events_from_tree(tree2, fields)
-    y1 = [1] * len(X1)
-    y2 = [0] * len(X2)
-    print()
-    X = X1 + X2
-    y = y1 + y2
-
-    print()
-    for i in X:
-        print(i)
-    print()
 
 
 

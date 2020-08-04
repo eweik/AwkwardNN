@@ -75,7 +75,8 @@ class AwkwardRNNDoubleJagged(nn.Module):
             else:
                 output, hidden = self.net(particle, hidden)
             hidden_event, cell_event = _extract_event_state(hidden, cell, self.hidden_size)
-        return F.log_softmax(self.output(output[-1]), dim=1)
+        out = self.output(output[-1])
+        return F.log_softmax(out, dim=1)
 
 
 class AwkwardRNNSingleJagged(nn.Module):
