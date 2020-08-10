@@ -129,17 +129,13 @@ def check_lorentz_vector(field):
     return field
 
 
-def get_input_size(data, feature_size_fixed):
+def get_input_size(data):
     '''
     Determines input size for Awkward-NN. Assume data is triple-nested.
     :param data: list of list
     :return: int
     '''
-    if feature_size_fixed:
-        #return data[0].shape[-1]
-        return len(data[0][0])
-        #return len(data[0][0][0])
-    return 1
+    return len(data[0][0])
 
 
 def wrap_fields_in_list(event_list):
@@ -152,7 +148,7 @@ def wrap_fields_in_list(event_list):
 
 
 class AwkwardDataset(Dataset):
-    def __init__(self, X, y, feature_size_fixed=False):
+    def __init__(self, X, y):
         """
         :param X: list
         :param y: int
@@ -162,9 +158,9 @@ class AwkwardDataset(Dataset):
         """
         self.y = [torch.tensor(y)]*len(X) if isinstance(y, int) else torch.tensor(y)
         self._output_size = len(set(y))
-        self.X = wrap_fields_in_list(X) if feature_size_fixed else X
+        # self.X = wrap_fields_in_list(X) if feature_size_fixed else X
         self.X = X
-        self.input_size = get_input_size(self.X, feature_size_fixed)
+        self.input_size = get_input_size(self.X)
 
     def __len__(self):
         return len(self.X)
@@ -186,42 +182,90 @@ class AwkwardDataset(Dataset):
 
 
 class AwkwardDatasetFromYaml(Dataset):
-    def __init__(self, data_dict_list, yaml_dict_list):
+    def __init__(self, roottree_dict_list, yaml_dict):
         """"""
-        self._modes = []
-        self._datasets = []
+        self._init_fixed_data(roottree_dict_list, yaml_dict['fixed_fields'])
+        self._init_jagged_data(roottree_dict_list, yaml_dict['jagged_fields'])
+        self._init_nested_data(roottree_dict_list, yaml_dict['jagged_fields'])
 
-        for network_dict in yaml_dict_list:
-            self._modes.append(network_dict['mode'])
-            fields = network_dict['fields']
-
-            X, y = [], []
-            for data_dict in data_dict_list:
-                roottree = get_roottree(data_dict['rootfile'])
-                events = get_events_from_tree(roottree, fields)
-                X += events
-                y += len(events) * [data_dict['target']]
-            dataset = AwkwardDataset(X, y)
-            self._datasets.append(dataset)
+        self._fixed_output = yaml_dict['fixed_fields']['embed_dim']
+        self._jagged_output = yaml_dict['jagged_fields']['embed_dim']
 
     def __len__(self):
         # total number of events is same as total number in one of the datasets
-        return len(self._datasets[0])
+        return len(self._fixed_dataset[0])
 
     def __getitem__(self, item):
-        data = []
-        for dataset in self._datasets:
-            x, y = dataset[item]
-            data.append(x)
-        return data, y
+        X_fixed, y_fixed = self._get_fixed_data(item)
+        X_jagged, y_jagged = self._get_jagged_data(item)
+        X_nested, y_nested = self._get_nested_data(item)
+
+        # in case on the y's is an empty list because no fields were listed in yaml
+        for i in [y_fixed, y_jagged, y_nested]:
+            if isinstance(i, int):
+                y = i
+        return (X_fixed, X_jagged, X_nested), y
+
+    def _init_fixed_data(self, roottree_dict_list, fixed_dict):
+        X_fixed, y_fixed = [], []
+        for roottree_dict in roottree_dict_list:
+            fixed_events = get_events_from_tree(roottree_dict['roottree'], fixed_dict['fields'])
+            X_fixed += fixed_events
+            y_fixed += len(fixed_events) * [roottree_dict['target']]
+        self._fixed_dataset = AwkwardDataset(X_fixed, y_fixed)
+
+    def _init_jagged_data(self, roottree_dict_list, jagged_dict):
+        jagged_fields = [field for field in jagged_dict['fields'] if isinstance(field, str)]
+        X_jagged, y_jagged = [], []
+        for roottree_dict in roottree_dict_list:
+            jagged_events = get_events_from_tree(roottree_dict['roottree'], jagged_fields)
+            X_jagged += jagged_events
+            y_jagged += len(jagged_events) * [roottree_dict['target']]
+        self._jagged_dataset = AwkwardDataset(X_jagged, y_jagged)
+
+    def _init_nested_data(self, roottree_dict_list, jagged_dict):
+        nested_fields = [list(field.values())[0] for field in jagged_dict['fields'] if isinstance(field, dict)]
+        self._jagged_input_size = sum([field['embed_dim'] for field in nested_fields])
+        self.nested_datasets = []
+        for nest in nested_fields:
+            dataset = AwkwardDatasetFromYaml(roottree_dict_list, nest)
+            self.nested_datasets.append(dataset)
+
+    def _get_fixed_data(self, item):
+        if self._fixed_dataset != []:
+            X_fixed, y_fixed = self._fixed_dataset[item]
+        else:
+            X_fixed, y_fixed = [], []
+        return X_fixed, y_fixed
+
+    def _get_jagged_data(self, item):
+        if self._jagged_dataset != []:
+            X_jagged, y_jagged = self._fixed_dataset[item]
+        else:
+            X_jagged, y_jagged = [], []
+        return X_jagged, y_jagged
+
+    def _get_nested_data(self, item):
+        X_nested = []
+        for dataset in self._nested_datasets:
+            nested_event, y_nested = dataset[item]
+            X_nested.append(nested_event)
+        return X_nested, y_nested
 
     @property
     def output_size(self):
-        return self._datasets[0].output_size
+        return self._fixed_output, self._jagged_output
 
     @property
-    def modes(self):
-        return self._modes
+    def fixed_input_size(self):
+        return self._fixed_dataset.input_size
+
+    @property
+    def jagged_input_size(self):
+        # returns the size of the all the subnests being fed into the jagged network.
+        # works if all the fields in jagged_fields have subkeys.
+        # not good if one of those fields is jagged with no subkeys
+        return self._jagged_input_size
 
 
 

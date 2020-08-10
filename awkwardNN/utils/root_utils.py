@@ -17,3 +17,11 @@ def get_roottree(rootfile):
             pass
     raise AssertionError("no uproot.rootio.TTree found in {}".format(rootfile))
 
+
+def get_roottree_dict_list(rootfile_dict_list):
+    roottree_dict_list = []
+    for data_dict in rootfile_dict_list:
+        roottree = get_roottree(data_dict['rootfile'])
+        roottree_dict = {'roottree': roottree, 'target': data_dict['target']}
+        roottree_dict_list.append(roottree_dict)
+    return roottree_dict_list

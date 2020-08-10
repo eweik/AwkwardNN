@@ -3,18 +3,18 @@ import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, random_split
-import yaml
 import shutil
 import os
 
 from awkwardNN.awkwardDataset import AwkwardDataset, AwkwardDatasetFromYaml
-from awkwardNN.validate_hyperparameters import _validate_hyperparameters
-from awkwardNN.awkwardRNN import AwkwardRNNDoubleJagged, AwkwardRNNSingleJagged
-from awkwardNN.deepset import AwkwardDeepSetSingleJagged, AwkwardDeepSetDoubleJagged
-from awkwardNN.awkwardMixed import AwkwardMixed
+from awkwardNN.nets.awkwardRNN import AwkwardRNNDoubleJagged
+from awkwardNN.nets.deepset import AwkwardDeepSetDoubleJagged
+from awkwardNN.nets.awkwardMixed import AwkwardMixed
+from awkwardNN.nets.awkwardYaml import AwkwardYaml
 import awkwardNN.utils.utils as utils
 from awkwardNN.utils.yaml_utils import *
 from awkwardNN.utils.print_utils import *
+from awkwardNN.utils.root_utils import *
 
 
 def get_train_valid_dataloaders(dataset, shuffle, batch_size, valid_fraction):
@@ -380,9 +380,9 @@ class awkwardNN_fromYaml(awkwardNNBase):
     def __init__(self, yamlfile='', **kwargs):
         super().__init__(**kwargs)
         if yamlfile == '':
-            self.yaml_dict_list = [{"mode": "rnn", "fields": None}]
+            self.yaml_dict = None
         else:
-            self.yaml_dict_list = get_yaml_dict_list(yamlfile)
+            self.yaml_dict = list(get_yaml_dict_list(yamlfile).values())[0]
 
     def train(self, data_dict_list):
         self._init_training(data_dict_list)
@@ -411,21 +411,13 @@ class awkwardNN_fromYaml(awkwardNNBase):
         return
 
     def _init_dataloaders(self, data_dict_list):
-        self.dataset = AwkwardDatasetFromYaml(data_dict_list, self.yaml_dict_list)
+        roottree_dict_list = get_roottree_dict_list(data_dict_list)
+        self.dataset = AwkwardDatasetFromYaml(roottree_dict_list, self.yaml_dict)
         super()._init_dataloaders()
         return
 
     def _init_model(self):
-        mode_list = self.dataset.modes
-        output_size = self.dataset.output_size
-        hidden_size = 100
-        num_layers = 1
-        phi_sizes = (32, 74)
-        rho_sizes = (50, 60)
-        activation = 'tanh'
-        dropout = 0
-        self.model = AwkwardMixed(mode_list, hidden_size, num_layers, phi_sizes,
-                                  rho_sizes, output_size, activation, dropout)
+        self.model = AwkwardYaml(self.yaml_dict, self.dataset)
         return
 
     @staticmethod

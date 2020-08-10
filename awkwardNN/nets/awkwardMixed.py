@@ -1,9 +1,8 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from awkwardNN.deepset import AwkwardDeepSetDoubleJagged
-from awkwardNN.awkwardRNN import AwkwardRNNDoubleJagged
+from awkwardNN.nets.deepset import AwkwardDeepSetDoubleJagged
+from awkwardNN.nets.awkwardRNN import AwkwardRNNDoubleJagged
 
 
 class AwkwardMixed(nn.Module):

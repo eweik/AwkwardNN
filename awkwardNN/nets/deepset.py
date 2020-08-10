@@ -73,8 +73,7 @@ class AwkwardDeepSetSingleJagged(nn.Module):
 
     def forward(self, data):
         data = torch.tensor([[i] for i in data], dtype=torch.float32)
-        output = self.deepset(data)
-        return F.log_softmax(output, dim=1)
+        return self.deepset(data)
 
 
 class AwkwardDeepSetDoubleJagged(nn.Module):
@@ -105,10 +104,7 @@ class AwkwardDeepSetDoubleJagged(nn.Module):
             data_i = torch.tensor([[[i]] for i in data_i], dtype=torch.float32)
             deepset1_output = self.activation(self.deepset1(data_i))
             deepset2_input.append(deepset1_output)
-        deepset2_output = self.deepset2(deepset2_input)
-        return F.log_softmax(deepset2_output, dim=1)
-
-
+        return self.deepset2(deepset2_input)
 
 
 

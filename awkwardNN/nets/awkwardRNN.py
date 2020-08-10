@@ -3,10 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def _get_rnn_subnetwork(mode, input_size, hidden_size, num_layers, activation, dropout):
+def _get_rnn_subnetwork(mode, input_size, hidden_size, num_layers, nonlinearity, dropout):
     kwargs = {'num_layers': num_layers, 'dropout': dropout}
     if mode == 'rnn':
-        kwargs.update({'nonlinearity': activation})
+        kwargs.update({'nonlinearity': nonlinearity})
         return nn.RNN(input_size, hidden_size, **kwargs)
     elif mode == 'lstm':
         return nn.LSTM(input_size, hidden_size, **kwargs)
@@ -32,8 +32,7 @@ def _extract_event_state(hidden, cell, hidden_size):
 
 
 class AwkwardRNNDoubleJagged(nn.Module):
-    def __init__(self, *, mode, hidden_size, num_layers,
-                 output_size, activation, dropout):
+    def __init__(self, *, mode, hidden_size, num_layers, nonlinearity, dropout):
         """
         RNN for double-jagged data
         e.g. list of events with varying number of particles with
@@ -55,9 +54,8 @@ class AwkwardRNNDoubleJagged(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.mode = mode
-        self.net = _get_rnn_subnetwork(mode, input_size, 2*hidden_size,
-                                       num_layers, activation, dropout)
-        self.output = nn.Linear(2*hidden_size, output_size)
+        self.net = _get_rnn_subnetwork(mode, input_size, hidden_size,
+                                       num_layers, nonlinearity, dropout)
 
     def forward(self, event):
         """
@@ -75,13 +73,11 @@ class AwkwardRNNDoubleJagged(nn.Module):
             else:
                 output, hidden = self.net(particle, hidden)
             hidden_event, cell_event = _extract_event_state(hidden, cell, self.hidden_size)
-        out = self.output(output[-1])
-        return F.log_softmax(out, dim=1)
+        return hidden
 
 
 class AwkwardRNNSingleJagged(nn.Module):
-    def __init__(self, *, mode, input_size, hidden_size,
-                 num_layers, output_size, activation, dropout):
+    def __init__(self, *, mode, input_size, hidden_size, num_layers, nonlinearity, dropout):
         """
         RNN for single-jagged data
         e.g. list of events with varying number of particles with
@@ -92,16 +88,14 @@ class AwkwardRNNSingleJagged(nn.Module):
         self.num_layers = num_layers
         self.mode = mode
         self.net = _get_rnn_subnetwork(mode, input_size, hidden_size,
-                                       num_layers, activation, dropout)
-        self.linear = nn.Linear(hidden_size, output_size)
+                                       num_layers, nonlinearity, dropout)
 
     def forward(self, event):
         hidden = torch.zeros(self.num_layers, 1, self.hidden_size)
         cell = torch.zeros(self.num_layers, 1, self.hidden_size)
         event = torch.tensor([[i] for i in event], dtype=torch.float32)
         if self.mode == 'lstm':
-            output, (_, _) = self.net(event, (hidden, cell))
+            output, (hidden, cell) = self.net(event, (hidden, cell))
         else:
-            output, _ = self.net(event, hidden)
-        return F.log_softmax(self.linear(output[-1]), dim=1)
-
+            output, hidden = self.net(event, hidden)
+        return hidden
