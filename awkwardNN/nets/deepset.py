@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 ACTIVATIONS = {'tanh': torch.tanh, 'relu': torch.relu}
@@ -9,7 +8,8 @@ ACTIVATIONS = {'tanh': torch.tanh, 'relu': torch.relu}
 class FCNetwork(nn.Module):
     def __init__(self, input_size, hidden_sizes, activation, dropout):
         super(FCNetwork, self).__init__()
-        self.nonlinear = ACTIVATIONS[activation]
+        # self.nonlinear = ACTIVATIONS[activation]
+        self.nonlinear = torch.relu
         self.input_size = input_size
         self.hidden_layers = [nn.Linear(input_size, hidden_sizes[0])]
         self.dropout = nn.Dropout(dropout)
@@ -54,7 +54,7 @@ class DeepSetNetwork(nn.Module):
 
 class AwkwardDeepSetSingleJagged(nn.Module):
     def __init__(self, *, input_size, phi_sizes, rho_sizes,
-                 output_size, activation, dropout):
+                 output_size, nonlinearity, dropout):
         """
         Deepset for single-jagged data
         e.g. list of events with varying number of particles with
@@ -64,21 +64,23 @@ class AwkwardDeepSetSingleJagged(nn.Module):
         :param phi_sizes:
         :param rho_sizes:
         :param output_size:
-        :param activation:
+        :param nonlinearity:
         :param dropout:
         """
         super(AwkwardDeepSetSingleJagged, self).__init__()
+        self.input_size = input_size
         self.deepset = DeepSetNetwork(input_size, phi_sizes, rho_sizes,
-                                      output_size, activation, dropout)
+                                      output_size, nonlinearity, dropout)
 
     def forward(self, data):
-        data = torch.tensor([[i] for i in data], dtype=torch.float32)
-        return self.deepset(data)
+        if isinstance(data, list):
+            data = torch.tensor([[i] for i in data], dtype=torch.float32) # TODO: try unsqueeze later
+        return self.deepset(data).unsqueeze(0)
 
 
 class AwkwardDeepSetDoubleJagged(nn.Module):
     def __init__(self, *, phi_sizes, rho_sizes,
-                 output_size, activation, dropout):
+                 output_size, nonlinearity, dropout):
         """
         Deepset for double-jagged data
         e.g. list of events with varying number of particles with
@@ -87,16 +89,18 @@ class AwkwardDeepSetDoubleJagged(nn.Module):
         :param phi_sizes:
         :param rho_sizes:
         :param output_size:
-        :param activation:
+        :param nonlinearity:
         :param dropout:
         """
         super(AwkwardDeepSetDoubleJagged, self).__init__()
-        input_size = 1
-        self.activation = ACTIVATIONS[activation]
-        self.deepset1 = DeepSetNetwork(input_size, phi_sizes, rho_sizes,
-                                       rho_sizes[-1], activation, dropout)
+        self.input_size = 1
+        self.phi_sizes = phi_sizes
+        self.rho_sizes = rho_sizes
+        self.activation = ACTIVATIONS[nonlinearity]
+        self.deepset1 = DeepSetNetwork(self.input_size, phi_sizes, rho_sizes,
+                                       rho_sizes[-1], nonlinearity, dropout)
         self.deepset2 = DeepSetNetwork(rho_sizes[-1], phi_sizes, rho_sizes,
-                                       output_size, activation, dropout)
+                                       output_size, nonlinearity, dropout)
 
     def forward(self, data):
         deepset2_input = []
@@ -104,7 +108,7 @@ class AwkwardDeepSetDoubleJagged(nn.Module):
             data_i = torch.tensor([[[i]] for i in data_i], dtype=torch.float32)
             deepset1_output = self.activation(self.deepset1(data_i))
             deepset2_input.append(deepset1_output)
-        return self.deepset2(deepset2_input)
+        return self.deepset2(deepset2_input).unsqueeze(0)
 
 
 

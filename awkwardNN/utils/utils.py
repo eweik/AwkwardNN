@@ -1,12 +1,10 @@
-# utils.py
-# Helper functions for AwkwardNNpractice
-
-import os
 import torch
 import torch.nn.functional as F
-import time
 import matplotlib.pyplot as plt
 
+############################################################
+# helper functions in training the neural network
+############################################################
 
 class AverageMeter(object):
     def __init__(self):

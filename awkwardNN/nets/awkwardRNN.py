@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 def _get_rnn_subnetwork(mode, input_size, hidden_size, num_layers, nonlinearity, dropout):
     kwargs = {'num_layers': num_layers, 'dropout': dropout}
-    if mode == 'rnn':
+    if mode == 'vanilla_rnn':
         kwargs.update({'nonlinearity': nonlinearity})
         return nn.RNN(input_size, hidden_size, **kwargs)
     elif mode == 'lstm':
@@ -51,7 +51,8 @@ class AwkwardRNNDoubleJagged(nn.Module):
         """
         super(AwkwardRNNDoubleJagged, self).__init__()
         input_size = 1
-        self.hidden_size = hidden_size
+        # halve hidden size is because of double jaggedness
+        self.hidden_size = int(hidden_size / 2)
         self.num_layers = num_layers
         self.mode = mode
         self.net = _get_rnn_subnetwork(mode, input_size, hidden_size,

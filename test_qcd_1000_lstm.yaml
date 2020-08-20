@@ -1,9 +1,9 @@
 event:
-  embed_dim: 32
-  mode: vanilla_rnn
+  embed_dim: 64
+  mode: lstm
   fixed_fields:
-    embed_dim: 32
-    mode: vanilla_rnn
+    embed_dim: 64
+    mode: lstm
     fields:
     - Event_size
     - Particle_size
@@ -20,15 +20,15 @@ event:
     - MissingET_size
     - ScalarHT_size
   jagged_fields:
-    embed_dim: 32
-    mode: vanilla_rnn
+    embed_dim: 64
+    mode: lstm
     fields:
     - Event:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Event.fUniqueID
           - Event.fBits
@@ -49,15 +49,15 @@ event:
           - Event.PDF1
           - Event.PDF2
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields: []
     - Particle:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Particle.fUniqueID
           - Particle.PID
@@ -86,15 +86,15 @@ event:
           - Particle.Y
           - Particle.Z
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields: []
     - Track:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Track.fUniqueID
           - Track.PID
@@ -130,15 +130,15 @@ event:
           - Track.Particle
           - Track.VertexIndex
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields: []
     - Tower:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Tower.fUniqueID
           - Tower.ET
@@ -151,16 +151,16 @@ event:
           - Tower.Ehad
           - Tower.Edges[4]
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Tower.Particles
     - EFlowTrack:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - EFlowTrack.fUniqueID
           - EFlowTrack.PID
@@ -196,15 +196,15 @@ event:
           - EFlowTrack.Particle
           - EFlowTrack.VertexIndex
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields: []
     - EFlowPhoton:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - EFlowPhoton.fUniqueID
           - EFlowPhoton.ET
@@ -217,16 +217,16 @@ event:
           - EFlowPhoton.Ehad
           - EFlowPhoton.Edges[4]
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - EFlowPhoton.Particles
     - EFlowNeutralHadron:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - EFlowNeutralHadron.fUniqueID
           - EFlowNeutralHadron.ET
@@ -239,16 +239,16 @@ event:
           - EFlowNeutralHadron.Ehad
           - EFlowNeutralHadron.Edges[4]
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - EFlowNeutralHadron.Particles
     - Jet:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Jet.fUniqueID
           - Jet.fBits
@@ -284,17 +284,17 @@ event:
           - Jet.NSubJetsSoftDropped
           - Jet.Area
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Jet.Constituents
           - Jet.Particles
     - Electron:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Electron.fUniqueID
           - Electron.fBits
@@ -312,15 +312,15 @@ event:
           - Electron.SumPtChargedPU
           - Electron.SumPt
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields: []
     - Photon:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Photon.fUniqueID
           - Photon.fBits
@@ -338,15 +338,15 @@ event:
           - Photon.SumPtChargedPU
           - Photon.SumPt
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields: []
     - Muon:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - Muon.fUniqueID
           - Muon.fBits
@@ -363,15 +363,15 @@ event:
           - Muon.SumPtChargedPU
           - Muon.SumPt
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields: []
     - FatJet:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - FatJet.fUniqueID
           - FatJet.fBits
@@ -407,17 +407,17 @@ event:
           - FatJet.NSubJetsSoftDropped
           - FatJet.Area
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - FatJet.Constituents
           - FatJet.Particles
     - MissingET:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - MissingET.fUniqueID
           - MissingET.fBits
@@ -425,20 +425,20 @@ event:
           - MissingET.Eta
           - MissingET.Phi
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields: []
     - ScalarHT:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 64
+        mode: lstm
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields:
           - ScalarHT.fUniqueID
           - ScalarHT.fBits
           - ScalarHT.HT
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 64
+          mode: lstm
           fields: []

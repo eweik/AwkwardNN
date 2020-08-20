@@ -9,12 +9,12 @@ import os
 from awkwardNN.awkwardDataset import AwkwardDataset, AwkwardDatasetFromYaml
 from awkwardNN.nets.awkwardRNN import AwkwardRNNDoubleJagged
 from awkwardNN.nets.deepset import AwkwardDeepSetDoubleJagged
-from awkwardNN.nets.awkwardMixed import AwkwardMixed
 from awkwardNN.nets.awkwardYaml import AwkwardYaml
 import awkwardNN.utils.utils as utils
 from awkwardNN.utils.yaml_utils import *
 from awkwardNN.utils.print_utils import *
 from awkwardNN.utils.root_utils import *
+from awkwardNN.validate_yaml import validate_yaml, validate_use_in_first_yaml
 
 
 def get_train_valid_dataloaders(dataset, shuffle, batch_size, valid_fraction):
@@ -382,55 +382,93 @@ class awkwardNN_fromYaml(awkwardNNBase):
         if yamlfile == '':
             self.yaml_dict = None
         else:
-            self.yaml_dict = list(get_yaml_dict_list(yamlfile).values())[0]
+            yaml_dict = get_yaml_dict_list(yamlfile)
+            self.name = list(yaml_dict.keys())[0]
+            self.yaml_dict = list(yaml_dict.values())[0]
+            validate_yaml(self.yaml_dict)
+            validate_use_in_first_yaml(self.yaml_dict)
 
-    def train(self, data_dict_list):
-        self._init_training(data_dict_list)
+    def train(self, rootfile_dict_list):
+        self._init_training(rootfile_dict_list)
         super().train()
         return
 
-    def _init_training(self, data_dict_list):
-        self._init_dataloaders(data_dict_list)
+    def _init_training(self, rootfile_dict_list):
+        if self.yaml_dict == None:
+            yaml_dict = self.get_yaml_dict_from_rootfile(rootfile_dict_list[0]['rootfile'])
+            self.name = list(yaml_dict.keys())[0]
+            self.yaml_dict = list(yaml_dict.values())[0]
+        self._init_dataloaders(rootfile_dict_list)
         self._init_model()
         super()._init_training()
         return
 
+    # TODO
     def test(self, rootfile, y):
+
         return
 
+    # TODO
     def _init_test(self, rootfile, y):
         return
 
+    # TODO
     def predict(self, rootfile):
         return
 
+    # TODO
     def predict_proba(self, rootfile):
         return
 
+    # TODO
     def predict_log_proba(self, rootfile):
         return
 
-    def _init_dataloaders(self, data_dict_list):
-        roottree_dict_list = get_roottree_dict_list(data_dict_list)
+    def _init_dataloaders(self, rootfile_dict_list):
+        roottree_dict_list = get_roottree_dict_list(rootfile_dict_list)
         self.dataset = AwkwardDatasetFromYaml(roottree_dict_list, self.yaml_dict)
         super()._init_dataloaders()
         return
 
     def _init_model(self):
-        self.model = AwkwardYaml(self.yaml_dict, self.dataset)
+        self.model = AwkwardYaml(self.yaml_dict, self.dataset, self.name, topnetwork=True)
+        return
+
+    ########################################################################
+    #        helper functions for dealing with yaml and rootfiles          #
+    ########################################################################
+
+    def get_yaml_dict(self):
+        return {self.name: self.yaml_dict}
+
+    @staticmethod
+    def get_yaml_dict_from_rootfile(rootfile, *, mode='vanilla_rnn', embed_dim=32,
+                                    nonlinearity='relu', hidden_sizes="(32, 32)"):
+        return get_default_yaml_dict_from_rootfile(rootfile, embed_dim, mode,
+                                                   hidden_sizes, nonlinearity)
+
+    @staticmethod
+    def save_yaml_dict(yaml_dict, filename):
+        with open(filename, 'w') as file:
+            yaml.dump(yaml_dict, file, sort_keys=False)
         return
 
     @staticmethod
-    def get_yaml_model_from_rootfile(rootfile, saveto=''):
-        yaml_dict_list = get_default_yaml_dict_from_rootfile(rootfile)
-        if saveto:
-            with open(saveto, 'w') as file:
-                yaml.dump(yaml_dict_list, file, sort_keys=False)
-        return yaml_dict_list
+    def create_yaml_file_from_rootfile(rootfile, filename, *, mode='vanilla_rnn', embed_dim=32,
+                                       nonlinearity='relu', hidden_sizes="(32, 32)"):
+        yaml_dict = get_default_yaml_dict_from_rootfile(rootfile, embed_dim, mode,
+                                                        hidden_sizes, nonlinearity)
+        save_yaml_model(yaml_dict, filename)
+        return
 
-    def get_yaml_model(self, saveto=None):
-        if saveto:
-            with open(saveto, 'w') as file:
-                yaml.dump(self.yaml_dict_list, file, sort_keys=False)
-        return self.yaml_dict_list
 
+
+
+
+
+
+
+# - a function to prepare the dictionary by inspecting the ROOT file
+# - a function that creates the yaml
+# - a function that writes it
+# - what I already have

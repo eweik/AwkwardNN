@@ -1,6 +1,11 @@
 import uproot
 
 
+###############################################################
+#   helper functions for direct interaction with rootfiles    #
+###############################################################
+
+
 def get_roottree(rootfile):
     """
     Get the subtree in rootfile that doesn't return an error when you

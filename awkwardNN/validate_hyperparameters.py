@@ -11,7 +11,7 @@ def _layer_sizes_less_than_zero(layer_dim):
     return False
 
 
-def _validate_hyperparameters(net):
+def validate_hyperparameters(net):
 
     if not isinstance(net.filename, str) or net.filename.endswith('.root'):
         raise ValueError("filename must be a string with suffix \".root\", "

@@ -1,9 +1,9 @@
 event:
-  embed_dim: 32
-  mode: vanilla_rnn
+  embed_dim: 16
+  mode: mlp
   fixed_fields:
-    embed_dim: 32
-    mode: vanilla_rnn
+    embed_dim: 16
+    mode: mlp
     fields:
     - Event_size
     - Particle_size
@@ -20,15 +20,15 @@ event:
     - MissingET_size
     - ScalarHT_size
   jagged_fields:
-    embed_dim: 32
-    mode: vanilla_rnn
+    embed_dim: 16
+    mode: mlp
     fields:
     - Event:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Event.fUniqueID
           - Event.fBits
@@ -49,15 +49,17 @@ event:
           - Event.PDF1
           - Event.PDF2
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields: []
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - Particle:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Particle.fUniqueID
           - Particle.PID
@@ -86,15 +88,17 @@ event:
           - Particle.Y
           - Particle.Z
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields: []
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - Track:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Track.fUniqueID
           - Track.PID
@@ -130,15 +134,17 @@ event:
           - Track.Particle
           - Track.VertexIndex
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields: []
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - Tower:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Tower.fUniqueID
           - Tower.ET
@@ -151,16 +157,18 @@ event:
           - Tower.Ehad
           - Tower.Edges[4]
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Tower.Particles
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - EFlowTrack:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - EFlowTrack.fUniqueID
           - EFlowTrack.PID
@@ -196,15 +204,17 @@ event:
           - EFlowTrack.Particle
           - EFlowTrack.VertexIndex
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields: []
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - EFlowPhoton:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - EFlowPhoton.fUniqueID
           - EFlowPhoton.ET
@@ -217,16 +227,18 @@ event:
           - EFlowPhoton.Ehad
           - EFlowPhoton.Edges[4]
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - EFlowPhoton.Particles
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - EFlowNeutralHadron:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - EFlowNeutralHadron.fUniqueID
           - EFlowNeutralHadron.ET
@@ -239,16 +251,18 @@ event:
           - EFlowNeutralHadron.Ehad
           - EFlowNeutralHadron.Edges[4]
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - EFlowNeutralHadron.Particles
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - Jet:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Jet.fUniqueID
           - Jet.fBits
@@ -284,17 +298,19 @@ event:
           - Jet.NSubJetsSoftDropped
           - Jet.Area
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Jet.Constituents
           - Jet.Particles
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - Electron:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Electron.fUniqueID
           - Electron.fBits
@@ -312,15 +328,17 @@ event:
           - Electron.SumPtChargedPU
           - Electron.SumPt
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields: []
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - Photon:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Photon.fUniqueID
           - Photon.fBits
@@ -338,15 +356,17 @@ event:
           - Photon.SumPtChargedPU
           - Photon.SumPt
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields: []
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - Muon:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - Muon.fUniqueID
           - Muon.fBits
@@ -363,15 +383,17 @@ event:
           - Muon.SumPtChargedPU
           - Muon.SumPt
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields: []
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - FatJet:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - FatJet.fUniqueID
           - FatJet.fBits
@@ -407,17 +429,19 @@ event:
           - FatJet.NSubJetsSoftDropped
           - FatJet.Area
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - FatJet.Constituents
           - FatJet.Particles
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - MissingET:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - MissingET.fUniqueID
           - MissingET.fBits
@@ -425,20 +449,26 @@ event:
           - MissingET.Eta
           - MissingET.Phi
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields: []
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
     - ScalarHT:
-        embed_dim: 32
-        mode: vanilla_rnn
+        embed_dim: 16
+        mode: mlp
         fixed_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields:
           - ScalarHT.fUniqueID
           - ScalarHT.fBits
           - ScalarHT.HT
         jagged_fields:
-          embed_dim: 32
-          mode: vanilla_rnn
+          embed_dim: 16
+          mode: mlp
           fields: []
+        hidden_sizes: (64, 32, 10)
+        nonlinearity: tanh
+  hidden_sizes: (64, 32, 10)
+  nonlinearity: tanh
