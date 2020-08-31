@@ -6,14 +6,14 @@ ACTIVATIONS = {'tanh': torch.tanh, 'relu': torch.relu}
 
 
 class FCNetwork(nn.Module):
-    def __init__(self, input_size, hidden_sizes, activation, dropout):
+    def __init__(self, input_size, hidden_size, activation, dropout):
         super(FCNetwork, self).__init__()
         # self.nonlinear = ACTIVATIONS[activation]
         self.nonlinear = torch.relu
         self.input_size = input_size
-        self.hidden_layers = [nn.Linear(input_size, hidden_sizes[0])]
+        self.hidden_layers = [nn.Linear(input_size, hidden_size[0])]
         self.dropout = nn.Dropout(dropout)
-        for in_size, out_size in zip(hidden_sizes, hidden_sizes[1:]):
+        for in_size, out_size in zip(hidden_size, hidden_size[1:]):
             self.hidden_layers.append(nn.Linear(in_size, out_size))
 
     def forward(self, x):
@@ -24,24 +24,19 @@ class FCNetwork(nn.Module):
 
 
 class DeepSetNetwork(nn.Module):
-    def __init__(self, input_size, phi_sizes, rho_sizes, output_size, activation, dropout):
+    def __init__(self, *, phi_sizes, rho_sizes, output_size, nonlinearity, dropout):
         """
-        :param input_size: _int_
-            the number of features in the input
-        :param phi_sizes: {_tuple_, _list_} of _int_
-            the number of nodes in the hidden layers of the phi network
-        :param rho_sizes: {_tuple_, _list_} of _int_
-            the number of nodes in the hidden layers of the rho network
-        :param output_size: _int_
-            the number of nodes in the output layer
-        :param activation: _str_
-            the non-linear function to use
-        :param dropout: _float_
-            probability of a node to be zeroed out
+        :param input_size: int
+        :param phi_sizes: {tuple, list} of int
+        :param rho_sizes: {tuple, list} of int
+        :param output_size: int
+        :param nonlinearity: str
+        :param dropout: float
         """
         super(DeepSetNetwork, self).__init__()
-        self.phi = FCNetwork(input_size, phi_sizes, activation, dropout)
-        self.rho = FCNetwork(phi_sizes[-1], rho_sizes, activation, dropout)
+        self.input_size = 1
+        self.phi = FCNetwork(self.input_size, phi_sizes, nonlinearity, dropout)
+        self.rho = FCNetwork(phi_sizes[-1], rho_sizes, nonlinearity, dropout)
         self.output = nn.Linear(rho_sizes[-1], output_size)
 
     def forward(self, data):
@@ -53,8 +48,7 @@ class DeepSetNetwork(nn.Module):
 
 
 class AwkwardDeepSetSingleJagged(nn.Module):
-    def __init__(self, *, input_size, phi_sizes, rho_sizes,
-                 output_size, nonlinearity, dropout):
+    def __init__(self, *, input_size, phi_sizes, rho_sizes, output_size, nonlinearity, dropout):
         """
         Deepset for single-jagged data
         e.g. list of events with varying number of particles with
@@ -69,8 +63,9 @@ class AwkwardDeepSetSingleJagged(nn.Module):
         """
         super(AwkwardDeepSetSingleJagged, self).__init__()
         self.input_size = input_size
-        self.deepset = DeepSetNetwork(input_size, phi_sizes, rho_sizes,
-                                      output_size, nonlinearity, dropout)
+        self.deepset = DeepSetNetwork(input_size=input_size, phi_sizes=phi_sizes,
+                                      rho_sizes=rho_sizes, output_size=output_size,
+                                      nonlinearity=nonlinearity, dropout=dropout)
 
     def forward(self, data):
         if isinstance(data, list):
@@ -79,8 +74,7 @@ class AwkwardDeepSetSingleJagged(nn.Module):
 
 
 class AwkwardDeepSetDoubleJagged(nn.Module):
-    def __init__(self, *, phi_sizes, rho_sizes,
-                 output_size, nonlinearity, dropout):
+    def __init__(self, *, phi_sizes, rho_sizes, output_size, nonlinearity, dropout):
         """
         Deepset for double-jagged data
         e.g. list of events with varying number of particles with
@@ -97,10 +91,12 @@ class AwkwardDeepSetDoubleJagged(nn.Module):
         self.phi_sizes = phi_sizes
         self.rho_sizes = rho_sizes
         self.activation = ACTIVATIONS[nonlinearity]
-        self.deepset1 = DeepSetNetwork(self.input_size, phi_sizes, rho_sizes,
-                                       rho_sizes[-1], nonlinearity, dropout)
-        self.deepset2 = DeepSetNetwork(rho_sizes[-1], phi_sizes, rho_sizes,
-                                       output_size, nonlinearity, dropout)
+        self.deepset1 = DeepSetNetwork(input_size=self.input_size, phi_sizes=phi_sizes,
+                                       rho_sizes=rho_sizes, output_size=rho_sizes[-1],
+                                       nonlinearity=nonlinearity, dropout=dropout)
+        self.deepset2 = DeepSetNetwork(input_size=rho_sizes[-1], phi_sizes=phi_sizes,
+                                       rho_sizes=rho_sizes, output_size=output_size,
+                                       nonlinearity=nonlinearity, dropout=dropout)
 
     def forward(self, data):
         deepset2_input = []

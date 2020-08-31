@@ -1,9 +1,13 @@
 event:
-  embed_dim: 25
-  mode: deepset
+  embed_dim: 50
+  mode: mlp
+  hidden_sizes: (100, 40)
+  nonlinearity: relu
   fixed_fields:
-    embed_dim: 25
-    mode: deepset
+    embed_dim: 50
+    mode: mlp
+    hidden_sizes: (100, 40)
+    nonlinearity: relu
     fields:
     - Event_size
     - Particle_size
@@ -19,16 +23,20 @@ event:
     - FatJet_size
     - MissingET_size
     - ScalarHT_size
-  jagged_fields:
-    embed_dim: 25
-    mode: deepset
+  nested_fields:
+    embed_dim: 50
+    mode: mlp
+    hidden_sizes: (100, 40)
+    nonlinearity: relu
     fields:
     - Event:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Event.fUniqueID
           - Event.fBits
@@ -48,16 +56,14 @@ event:
           - Event.ScalePDF
           - Event.PDF1
           - Event.PDF2
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
-          fields: []
     - Particle:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Particle.fUniqueID
           - Particle.PID
@@ -85,16 +91,16 @@ event:
           - Particle.X
           - Particle.Y
           - Particle.Z
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
-          fields: []
+        bad_keys:
+        - Particle.fBits
     - Track:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Track.fUniqueID
           - Track.PID
@@ -129,16 +135,16 @@ event:
           - Track.ErrorDZ
           - Track.Particle
           - Track.VertexIndex
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
-          fields: []
+        bad_keys:
+        - Track.fBits
     - Tower:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Tower.fUniqueID
           - Tower.ET
@@ -150,17 +156,21 @@ event:
           - Tower.Eem
           - Tower.Ehad
           - Tower.Edges[4]
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
+        object_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Tower.Particles
+        bad_keys:
+        - Tower.fBits
     - EFlowTrack:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - EFlowTrack.fUniqueID
           - EFlowTrack.PID
@@ -195,16 +205,16 @@ event:
           - EFlowTrack.ErrorDZ
           - EFlowTrack.Particle
           - EFlowTrack.VertexIndex
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
-          fields: []
+        bad_keys:
+        - EFlowTrack.fBits
     - EFlowPhoton:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - EFlowPhoton.fUniqueID
           - EFlowPhoton.ET
@@ -216,17 +226,21 @@ event:
           - EFlowPhoton.Eem
           - EFlowPhoton.Ehad
           - EFlowPhoton.Edges[4]
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
+        object_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - EFlowPhoton.Particles
+        bad_keys:
+        - EFlowPhoton.fBits
     - EFlowNeutralHadron:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - EFlowNeutralHadron.fUniqueID
           - EFlowNeutralHadron.ET
@@ -238,17 +252,21 @@ event:
           - EFlowNeutralHadron.Eem
           - EFlowNeutralHadron.Ehad
           - EFlowNeutralHadron.Edges[4]
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
+        object_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - EFlowNeutralHadron.Particles
+        bad_keys:
+        - EFlowNeutralHadron.fBits
     - Jet:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Jet.fUniqueID
           - Jet.fBits
@@ -283,18 +301,20 @@ event:
           - Jet.NSubJetsPruned
           - Jet.NSubJetsSoftDropped
           - Jet.Area
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
+        object_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Jet.Constituents
           - Jet.Particles
     - Electron:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Electron.fUniqueID
           - Electron.fBits
@@ -311,16 +331,14 @@ event:
           - Electron.SumPtNeutral
           - Electron.SumPtChargedPU
           - Electron.SumPt
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
-          fields: []
     - Photon:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Photon.fUniqueID
           - Photon.fBits
@@ -330,23 +348,25 @@ event:
           - Photon.E
           - Photon.T
           - Photon.EhadOverEem
-          - Photon.Particles
           - Photon.IsolationVar
           - Photon.IsolationVarRhoCorr
           - Photon.SumPtCharged
           - Photon.SumPtNeutral
           - Photon.SumPtChargedPU
           - Photon.SumPt
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
-          fields: []
+        object_fields:
+          embed_dim: 50
+          mode: lstm
+          fields:
+          - Photon.Particles
     - Muon:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - Muon.fUniqueID
           - Muon.fBits
@@ -362,16 +382,14 @@ event:
           - Muon.SumPtNeutral
           - Muon.SumPtChargedPU
           - Muon.SumPt
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
-          fields: []
     - FatJet:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - FatJet.fUniqueID
           - FatJet.fBits
@@ -406,39 +424,35 @@ event:
           - FatJet.NSubJetsPruned
           - FatJet.NSubJetsSoftDropped
           - FatJet.Area
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
+        object_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - FatJet.Constituents
           - FatJet.Particles
     - MissingET:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - MissingET.fUniqueID
           - MissingET.fBits
           - MissingET.MET
           - MissingET.Eta
           - MissingET.Phi
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
-          fields: []
     - ScalarHT:
-        embed_dim: 25
-        mode: deepset
-        fixed_fields:
-          embed_dim: 25
-          mode: deepset
+        embed_dim: 50
+        mode: mlp
+        hidden_sizes: (100, 40)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 50
+          mode: lstm
           fields:
           - ScalarHT.fUniqueID
           - ScalarHT.fBits
           - ScalarHT.HT
-        jagged_fields:
-          embed_dim: 25
-          mode: deepset
-          fields: []

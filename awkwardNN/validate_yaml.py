@@ -17,34 +17,27 @@ def validate_yaml(yaml_dict):
     _validate_nonlinearity(yaml_dict)
     _validate_hidden_size(yaml_dict)
     _validate_use(yaml_dict)
-    _validate_fixed_fields(yaml_dict)
-    _validate_jagged_fields(yaml_dict)
-    for field in yaml_dict['jagged_fields']:
-        if isinstance(field, dict):
-            validate_yaml(field)
+    _validate_object_type(yaml_dict, 'fixed_fields')
+    _validate_object_type(yaml_dict, 'jagged_fields')
+    _validate_object_type(yaml_dict, 'object_fields')
+    _validate_object_type(yaml_dict, 'nested_fields')
+    _validate_nested_type(yaml_dict)
 
 
-def _validate_fixed_fields(yaml_dict):
-    if 'fixed_fields' not in yaml_dict:
-        raise ValueError("Yaml file is missing \'fixed_fields\', it is a required field.")
-    _validate_embed_dim(yaml_dict['fixed_fields'])
-    _validate_mode(yaml_dict['fixed_fields'])
-    _validate_nonlinearity(yaml_dict['fixed_fields'])
-    _validate_hidden_size(yaml_dict['fixed_fields'])
-    _validate_use(yaml_dict['fixed_fields'])
-    _validate_fields(yaml_dict['fixed_fields'])
+def _validate_object_type(yaml_dict, object_type):
+    if object_type in yaml_dict:
+        yaml_block = yaml_dict[object_type]
+        _validate_embed_dim(yaml_block)
+        _validate_mode(yaml_block)
+        _validate_nonlinearity(yaml_block)
+        _validate_hidden_size(yaml_block)
+        _validate_use(yaml_block)
+        _validate_fields(yaml_block)
 
-
-def _validate_jagged_fields(yaml_dict):
-    if 'jagged_fields' not in yaml_dict:
-        raise ValueError("Yaml file is missing \'jagged_fields\', it is a required field.")
-    _validate_embed_dim(yaml_dict['jagged_fields'])
-    _validate_mode(yaml_dict['jagged_fields'])
-    _validate_nonlinearity(yaml_dict['jagged_fields'])
-    _validate_hidden_size(yaml_dict['jagged_fields'])
-    _validate_use(yaml_dict['jagged_fields'])
-    _validate_fields(yaml_dict['jagged_fields'])
-
+def _validate_nested_type(yaml_dict):
+    if 'nested_fields' in yaml_dict:
+        for field in yaml_dict['nested_fields']['fields']:
+            validate_yaml(list(field.values())[0])
 
 ################################################################
 #           functions to validate fields individually          #

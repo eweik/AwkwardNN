@@ -1,21 +1,22 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
-def _get_rnn_subnetwork(mode, input_size, hidden_size, num_layers, nonlinearity, dropout):
-    kwargs = {'num_layers': num_layers, 'dropout': dropout}
+######################################################################
+#                   helper functions for awkward rnn                 #
+######################################################################
+
+def _get_rnn_subnetwork(mode, input_size, hidden_size, nonlinearity, dropout):
+    kwargs = {'dropout': dropout}
     if mode == 'vanilla_rnn':
         kwargs.update({'nonlinearity': nonlinearity})
         return nn.RNN(input_size, hidden_size, **kwargs)
     elif mode == 'lstm':
         return nn.LSTM(input_size, hidden_size, **kwargs)
-    # elif mode == 'gru':
     return nn.GRU(input_size, hidden_size, **kwargs)
 
 
 def _reset_state(hidden_event, cell_event):
-    # create hidden (and cell) state for rnn (and lstm) going through particle
     hidden_particle = torch.zeros_like(hidden_event)
     cell_particle = torch.zeros_like(cell_event)
     hidden = torch.cat((hidden_event, hidden_particle), dim=2)
@@ -24,39 +25,34 @@ def _reset_state(hidden_event, cell_event):
 
 
 def _extract_event_state(hidden, cell, hidden_size):
-    # hidden_event = hidden.clone().detach()[:, :, hidden_size:].requires_grad_(True)
-    # cell_event = cell.clone().detach()[:, :, hidden_size:].requires_grad_(True)
-    hidden_event = hidden.clone().detach()[:, :, hidden_size:]
-    cell_event = cell.clone().detach()[:, :, hidden_size:]
+    hidden_event = hidden.clone().detach()[:, :, hidden_size:].requires_grad_(True)
+    cell_event = cell.clone().detach()[:, :, hidden_size:].requires_grad_(True)
+    # hidden_event = hidden.clone().detach()[:, :, hidden_size:]
+    # cell_event = cell.clone().detach()[:, :, hidden_size:]
     return hidden_event, cell_event
+
+######################################################################
 
 
 class AwkwardRNNDoubleJagged(nn.Module):
-    def __init__(self, *, mode, hidden_size, num_layers, nonlinearity, dropout):
+    def __init__(self, *, mode, hidden_size, nonlinearity, dropout):
         """
         RNN for double-jagged data
         e.g. list of events with varying number of particles with
              varying number of features
 
         :param mode: _str_ in ['lstm', 'rnn', 'gru']
-        :param hidden_size: _int_
-            the number of nodes in the hidden layers of the rnn
-        :param num_layers: _int_
-            the number of hidden layers in the rnn
-        :param output_size: _int_
-            the number of nodes in output layer
-        :param activation: _str_ in ['tanh', 'relu']
-            only relevant for 'rnn' mode
-        :param dropout: _int_ in range [0, 1)
+        :param hidden_size: int
+        :param nonlinearity: str in ['tanh', 'relu']
+        :param dropout: int in range [0, 1)
         """
         super(AwkwardRNNDoubleJagged, self).__init__()
         input_size = 1
         # halve hidden size is because of double jaggedness
         self.hidden_size = int(hidden_size / 2)
-        self.num_layers = num_layers
         self.mode = mode
         self.net = _get_rnn_subnetwork(mode, input_size, hidden_size,
-                                       num_layers, nonlinearity, dropout)
+                                       nonlinearity, dropout)
 
     def forward(self, event):
         """
@@ -64,11 +60,11 @@ class AwkwardRNNDoubleJagged(nn.Module):
         :param event:
         :return:
         """
-        hidden_event = torch.zeros(self.num_layers, 1, self.hidden_size)
-        cell_event = torch.zeros(self.num_layers, 1, self.hidden_size)
+        hidden_event = torch.zeros(1, 1, self.hidden_size)
+        cell_event = torch.zeros(1, 1, self.hidden_size)
         for particle in event:
             hidden, cell = _reset_state(hidden_event, cell_event)
-            particle = torch.tensor([[[i]] for i in particle], dtype=torch.float32)
+            particle = torch.squeeze(particle, dim=0)
             if self.mode == 'lstm':
                 output, (hidden, cell) = self.net(particle, (hidden, cell))
             else:
@@ -77,26 +73,39 @@ class AwkwardRNNDoubleJagged(nn.Module):
         return hidden
 
 
-class AwkwardRNNSingleJagged(nn.Module):
-    def __init__(self, *, mode, input_size, hidden_size, num_layers, nonlinearity, dropout):
+class RNNDoubleStacked(nn.Module):
+    def __init__(self, *, mode, hidden_size, nonlinearity, dropout):
         """
-        RNN for single-jagged data
+        RNN for double-jagged data
         e.g. list of events with varying number of particles with
-             fixed number of features
+             varying number of features
+
+        :param mode: _str_ in ['lstm', 'rnn', 'gru']
+        :param hidden_size: int
+        :param nonlinearity: str in ['tanh', 'relu']
+        :param dropout: int in range [0, 1)
         """
-        super(AwkwardRNNSingleJagged, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
+        super(AwkwardRNNDoubleJagged, self).__init__()
+        input_size = 1
+        # halve hidden size is because of double jaggedness
+        self.hidden_size = int(hidden_size)
         self.mode = mode
-        self.net = _get_rnn_subnetwork(mode, input_size, hidden_size,
-                                       num_layers, nonlinearity, dropout)
+        self.net1 = _get_rnn_subnetwork(mode, input_size, hidden_size, nonlinearity, dropout)
+        self.net2 = _get_rnn_subnetwork(mode, hidden_size, hidden_size, nonlinearity, dropout)
 
     def forward(self, event):
-        hidden = torch.zeros(self.num_layers, 1, self.hidden_size)
-        cell = torch.zeros(self.num_layers, 1, self.hidden_size)
-        event = torch.tensor([[i] for i in event], dtype=torch.float32)
+        """
+        """
+        hidden_list = []
+        for particle in event:
+            if self.mode == 'lstm':
+                _, (hidden, _) = self.net1(particle)
+            else:
+                _, hidden = self.net1(particle)
+            hidden_list.append(hidden)
         if self.mode == 'lstm':
-            output, (hidden, cell) = self.net(event, (hidden, cell))
+            _, (hidden, _) = self.net2(hidden_list)
         else:
-            output, hidden = self.net(event, hidden)
+            _, hidden = self.net1(hidden_list)
         return hidden
+

@@ -1,9 +1,14 @@
 event:
-  embed_dim: 16
+  embed_dim: 64
   mode: mlp
+  hidden_sizes: (32, 32)
+  nonlinearity: relu
   fixed_fields:
-    embed_dim: 16
-    mode: mlp
+    embed_dim: 64
+    mode: deepset
+    phi_sizes: (64, 40)
+    rho_sizes: (50, 25)
+    nonlinearity: relu
     fields:
     - Event_size
     - Particle_size
@@ -19,16 +24,20 @@ event:
     - FatJet_size
     - MissingET_size
     - ScalarHT_size
-  jagged_fields:
-    embed_dim: 16
+  nested_fields:
+    embed_dim: 64
     mode: mlp
+    hidden_sizes: (32, 32)
+    nonlinearity: relu
     fields:
     - Event:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - Event.fUniqueID
           - Event.fBits
@@ -48,18 +57,14 @@ event:
           - Event.ScalePDF
           - Event.PDF1
           - Event.PDF2
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
-          fields: []
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
     - Particle:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - Particle.fUniqueID
           - Particle.PID
@@ -87,18 +92,16 @@ event:
           - Particle.X
           - Particle.Y
           - Particle.Z
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
-          fields: []
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
+        bad_keys:
+        - Particle.fBits
     - Track:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - Track.fUniqueID
           - Track.PID
@@ -133,18 +136,16 @@ event:
           - Track.ErrorDZ
           - Track.Particle
           - Track.VertexIndex
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
-          fields: []
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
+        bad_keys:
+        - Track.fBits
     - Tower:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - Tower.fUniqueID
           - Tower.ET
@@ -156,19 +157,22 @@ event:
           - Tower.Eem
           - Tower.Ehad
           - Tower.Edges[4]
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
+        object_fields:
+          embed_dim: 64
+          mode: vanilla_rnn
+          nonlinearity: relu
           fields:
           - Tower.Particles
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
+        bad_keys:
+        - Tower.fBits
     - EFlowTrack:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - EFlowTrack.fUniqueID
           - EFlowTrack.PID
@@ -203,18 +207,16 @@ event:
           - EFlowTrack.ErrorDZ
           - EFlowTrack.Particle
           - EFlowTrack.VertexIndex
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
-          fields: []
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
+        bad_keys:
+        - EFlowTrack.fBits
     - EFlowPhoton:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - EFlowPhoton.fUniqueID
           - EFlowPhoton.ET
@@ -226,19 +228,22 @@ event:
           - EFlowPhoton.Eem
           - EFlowPhoton.Ehad
           - EFlowPhoton.Edges[4]
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
+        object_fields:
+          embed_dim: 64
+          mode: vanilla_rnn
+          nonlinearity: relu
           fields:
           - EFlowPhoton.Particles
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
+        bad_keys:
+        - EFlowPhoton.fBits
     - EFlowNeutralHadron:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - EFlowNeutralHadron.fUniqueID
           - EFlowNeutralHadron.ET
@@ -250,19 +255,22 @@ event:
           - EFlowNeutralHadron.Eem
           - EFlowNeutralHadron.Ehad
           - EFlowNeutralHadron.Edges[4]
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
+        object_fields:
+          embed_dim: 64
+          mode: vanilla_rnn
+          nonlinearity: relu
           fields:
           - EFlowNeutralHadron.Particles
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
+        bad_keys:
+        - EFlowNeutralHadron.fBits
     - Jet:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - Jet.fUniqueID
           - Jet.fBits
@@ -297,20 +305,21 @@ event:
           - Jet.NSubJetsPruned
           - Jet.NSubJetsSoftDropped
           - Jet.Area
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
+        object_fields:
+          embed_dim: 64
+          mode: vanilla_rnn
+          nonlinearity: relu
           fields:
           - Jet.Constituents
           - Jet.Particles
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
     - Electron:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - Electron.fUniqueID
           - Electron.fBits
@@ -327,18 +336,14 @@ event:
           - Electron.SumPtNeutral
           - Electron.SumPtChargedPU
           - Electron.SumPt
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
-          fields: []
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
     - Photon:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - Photon.fUniqueID
           - Photon.fBits
@@ -348,25 +353,26 @@ event:
           - Photon.E
           - Photon.T
           - Photon.EhadOverEem
-          - Photon.Particles
           - Photon.IsolationVar
           - Photon.IsolationVarRhoCorr
           - Photon.SumPtCharged
           - Photon.SumPtNeutral
           - Photon.SumPtChargedPU
           - Photon.SumPt
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
-          fields: []
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
+        object_fields:
+          embed_dim: 64
+          mode: vanilla_rnn
+          nonlinearity: relu
+          fields:
+          - Photon.Particles
     - Muon:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - Muon.fUniqueID
           - Muon.fBits
@@ -382,18 +388,14 @@ event:
           - Muon.SumPtNeutral
           - Muon.SumPtChargedPU
           - Muon.SumPt
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
-          fields: []
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
     - FatJet:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - FatJet.fUniqueID
           - FatJet.fBits
@@ -428,47 +430,36 @@ event:
           - FatJet.NSubJetsPruned
           - FatJet.NSubJetsSoftDropped
           - FatJet.Area
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
+        object_fields:
+          embed_dim: 64
+          mode: vanilla_rnn
+          nonlinearity: relu
           fields:
           - FatJet.Constituents
           - FatJet.Particles
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
     - MissingET:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - MissingET.fUniqueID
           - MissingET.fBits
           - MissingET.MET
           - MissingET.Eta
           - MissingET.Phi
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
-          fields: []
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
     - ScalarHT:
-        embed_dim: 16
+        embed_dim: 64
         mode: mlp
-        fixed_fields:
-          embed_dim: 16
-          mode: mlp
+        hidden_sizes: (32, 32)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
           fields:
           - ScalarHT.fUniqueID
           - ScalarHT.fBits
           - ScalarHT.HT
-        jagged_fields:
-          embed_dim: 16
-          mode: mlp
-          fields: []
-        hidden_sizes: (64, 32, 10)
-        nonlinearity: tanh
-  hidden_sizes: (64, 32, 10)
-  nonlinearity: tanh

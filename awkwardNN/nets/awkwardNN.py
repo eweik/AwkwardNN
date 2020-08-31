@@ -5,15 +5,17 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, random_split
 import shutil
 import os
+import yaml
 
+from awkwardNN.yamlTree import YamlTree
 from awkwardNN.awkwardDataset import AwkwardDataset, AwkwardDatasetFromYaml
 from awkwardNN.nets.awkwardRNN import AwkwardRNNDoubleJagged
 from awkwardNN.nets.deepset import AwkwardDeepSetDoubleJagged
 from awkwardNN.nets.awkwardYaml import AwkwardYaml
 import awkwardNN.utils.utils as utils
-from awkwardNN.utils.yaml_utils import *
+import awkwardNN.utils.yaml_utils as yaml_utils
 from awkwardNN.utils.print_utils import *
-from awkwardNN.utils.root_utils import *
+import awkwardNN.utils.root_utils_uproot as root_utils
 from awkwardNN.validate_yaml import validate_yaml, validate_use_in_first_yaml
 
 
@@ -170,8 +172,7 @@ class awkwardNNBase(ABC):
 
     def _init_test(self, dataset):
         self.testsize = len(dataset)
-        self.testloader = DataLoader(dataset, batch_size=self.batch_size,
-                                     shuffle=False)
+        self.testloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         self._load_checkpoint(best=True)
 
     def _init_dataloaders(self):
@@ -382,7 +383,7 @@ class awkwardNN_fromYaml(awkwardNNBase):
         if yamlfile == '':
             self.yaml_dict = None
         else:
-            yaml_dict = get_yaml_dict_list(yamlfile)
+            yaml_dict = yaml_utils.get_yaml_dict_list(yamlfile)
             self.name = list(yaml_dict.keys())[0]
             self.yaml_dict = list(yaml_dict.values())[0]
             validate_yaml(self.yaml_dict)
@@ -403,36 +404,56 @@ class awkwardNN_fromYaml(awkwardNNBase):
         super()._init_training()
         return
 
-    # TODO
-    def test(self, rootfile, y):
+    def test(self, rootfile_dict_list):
+        self._init_test(rootfile_dict_list)
+        super.test()
 
-        return
+    def _init_test(self, rootfile_dict_list):
+        roottree_dict_list = root_utils.get_roottree_dict_list(rootfile_dict_list)
+        self.dataset = AwkwardDatasetFromYaml(roottree_dict_list, self.yaml_dict)
+        super()._init_test(self.dataset)
 
-    # TODO
-    def _init_test(self, rootfile, y):
-        return
-
-    # TODO
     def predict(self, rootfile):
-        return
+        self._init_test({'rootfile': rootfile, 'target': -1})
+        predictions = []
+        self.model.eval()
+        for i, x in enumerate(self.testloader):
+            # x = x.to(self.device)
+            with torch.no_grad():
+                y_hat = self.model(x)
+                _, prediction = torch.max(y_hat, 1)
+                predictions.append(prediction)
+        return predictions
 
-    # TODO
     def predict_proba(self, rootfile):
-        return
+        self._init_test({'rootfile': rootfile, 'target': -1})
+        pred_proba = []
+        self.model.eval()
+        for i, x in enumerate(self.testloader):
+            # x = x.to(self.device)
+            with torch.no_grad():
+                y_hat = self.model(x)
+                pred_proba.append(torch.exp(y_hat))
+        return pred_proba
 
-    # TODO
     def predict_log_proba(self, rootfile):
-        return
+        self._init_test({'rootfile': rootfile, 'target': -1})
+        pred_log_proba = []
+        self.model.eval()
+        for i, x in enumerate(self.testloader):
+            # x = x.to(self.device)
+            with torch.no_grad():
+                y_hat = self.model(x)
+                pred_log_proba.append(y_hat)
+        return pred_log_proba
 
     def _init_dataloaders(self, rootfile_dict_list):
-        roottree_dict_list = get_roottree_dict_list(rootfile_dict_list)
+        roottree_dict_list = root_utils.get_roottree_dict_list(rootfile_dict_list)
         self.dataset = AwkwardDatasetFromYaml(roottree_dict_list, self.yaml_dict)
         super()._init_dataloaders()
-        return
 
     def _init_model(self):
         self.model = AwkwardYaml(self.yaml_dict, self.dataset, self.name, topnetwork=True)
-        return
 
     ########################################################################
     #        helper functions for dealing with yaml and rootfiles          #
@@ -442,33 +463,19 @@ class awkwardNN_fromYaml(awkwardNNBase):
         return {self.name: self.yaml_dict}
 
     @staticmethod
-    def get_yaml_dict_from_rootfile(rootfile, *, mode='vanilla_rnn', embed_dim=32,
-                                    nonlinearity='relu', hidden_sizes="(32, 32)"):
-        return get_default_yaml_dict_from_rootfile(rootfile, embed_dim, mode,
-                                                   hidden_sizes, nonlinearity)
+    def get_yaml_dict_from_rootfile(rootfile, **kwargs):
+        roottree = root_utils.get_roottree(rootfile)
+        yaml_tree = YamlTree(roottree, **kwargs)
+        return yaml_tree.dictionary
 
     @staticmethod
-    def save_yaml_dict(yaml_dict, filename):
-        with open(filename, 'w') as file:
+    def save_yaml_dict(yaml_dict, yaml_filename):
+        with open(yaml_filename, 'w') as file:
             yaml.dump(yaml_dict, file, sort_keys=False)
         return
 
     @staticmethod
-    def create_yaml_file_from_rootfile(rootfile, filename, *, mode='vanilla_rnn', embed_dim=32,
-                                       nonlinearity='relu', hidden_sizes="(32, 32)"):
-        yaml_dict = get_default_yaml_dict_from_rootfile(rootfile, embed_dim, mode,
-                                                        hidden_sizes, nonlinearity)
-        save_yaml_model(yaml_dict, filename)
-        return
+    def create_yaml_file_from_rootfile(rootfile, yaml_filename, **kwargs):
+        yaml_dict = awkwardNN_fromYaml.get_yaml_dict_from_rootfile(rootfile, **kwargs)
+        awkwardNN_fromYaml.save_yaml_dict(yaml_dict, yaml_filename)
 
-
-
-
-
-
-
-
-# - a function to prepare the dictionary by inspecting the ROOT file
-# - a function that creates the yaml
-# - a function that writes it
-# - what I already have
