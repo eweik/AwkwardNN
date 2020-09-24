@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from awkwardNN.nets.deepset import DeepSetNetwork, AwkwardDeepSetDoubleJagged, AwkwardDeepSetSingleJagged
-from awkwardNN.nets.awkwardRNN import AwkwardRNNDoubleJagged
+from awkwardNN.nets.deepset import DeepSetNetwork, AwkwardDeepSetDoubleJagged
+from awkwardNN.nets.awkwardRNN import RNNDoubleStacked
 from awkwardNN.nets.mlp import MLP
 from awkwardNN.utils.yaml_utils import get_nested_yaml, parse_hidden_size_string
 
-
 ACTIVATIONS = {'tanh': torch.tanh, 'relu': torch.relu}
+
 
 ####################################################################
 #                   UTILITY FUNCTIONS FOR init                     #
@@ -99,6 +99,14 @@ def _get_output_network_input_size(yaml_dict, dataset):
 #                  UTILITY FUNCTIONS FOR forward()                 #
 ####################################################################
 
+def _is_empty(x):
+    if x == []:
+        return True
+    if isinstance(x, torch.Tensor) and x.nelement() == 0:
+        return True
+    return False
+
+
 def _append_lists(X_list):
     X_prime = []
     for X_i in X_list:
@@ -106,14 +114,14 @@ def _append_lists(X_list):
     return X_prime
 
 
-def _append(X1, X2, axis):
-    if X1 == [] and X2 == []:
+def _append(x1, x2, axis):
+    if _is_empty(x1) and _is_empty(x2):
         return []
-    elif X1 == []:
-        return X2
-    elif X2 == []:
-        return X1
-    return torch.cat((X1, X2), dim=axis)
+    elif _is_empty(x1):
+        return x2
+    elif _is_empty(x2):
+        return x1
+    return torch.cat((x1, x2), dim=axis)
 
 
 def _parse_output(mode, output, output_size):
@@ -130,6 +138,7 @@ def _parse_output(mode, output, output_size):
         _, hidden = output
         return hidden
 
+
 ####################################################################
 
 
@@ -139,19 +148,21 @@ class AwkwardFixedNet(nn.Module):
         self._use_fixed_net = dataset.use_fixed_data
         if self._use_fixed_net:
             yaml_fixed_dict = yaml_dict['fixed_fields']
-            kwargs = _get_kwargs(yaml_fixed_dict)
-            kwargs.update({'input_size': dataset.fixed_input_size})
-            if yaml_fixed_dict['mode'] == 'deepset':
-                self.fixed_net = DeepSetNetwork(**kwargs)
-            elif yaml_fixed_dict['mode'] == 'mlp':
-                self.fixed_net = MLP(**kwargs)
-            else:
-                mode_list = ['deepset', 'mlp']
-                raise ValueError("The fixed mode '%s' is not supported. Supported modes"
-                                 " are %s." % (yaml_fixed_dict['mode'], mode_list))
+            self.kwargs = _get_kwargs(yaml_fixed_dict)
+            self._pick_network(yaml_fixed_dict, dataset)
+
+    def _pick_network(self, yaml_fixed_dict, dataset):
+        if yaml_fixed_dict['mode'] == 'deepset':
+            self.fixed_net = DeepSetNetwork(input_size=1, **self.kwargs)
+        elif yaml_fixed_dict['mode'] == 'mlp':
+            self.fixed_net = MLP(input_size=dataset.fixed_input_size, **self.kwargs)
+        else:
+            mode_list = ['deepset', 'mlp']
+            raise ValueError("The fixed mode '%s' is not supported. Supported modes"
+                             " are %s." % (yaml_fixed_dict['mode'], mode_list))
 
     def forward(self, X):
-        if self._use_fixed_net and X != []:
+        if self._use_fixed_net and not _is_empty(X):
             return self.fixed_net(X)
         return X
 
@@ -162,26 +173,29 @@ class AwkwardJaggedNet(nn.Module):
         self._use_jagged_net = dataset.use_jagged_data
         if self._use_jagged_net:
             yaml_jagged_dict = yaml_dict['jagged_fields']
-            kwargs = _get_kwargs(yaml_jagged_dict)
-            kwargs.update({'input_size': dataset.jagged_input_size})
-            self.jagged_mode = yaml_jagged_dict['mode']
-            if self.jagged_mode == 'deepset':
-                self.jagged_net = AwkwardDeepSetSingleJagged(**kwargs)
-            elif self.jagged_mode == 'vanilla_rnn':
-                self.jagged_net = nn.RNN(**kwargs)
-            elif self.jagged_mode == 'gru':
-                self.jagged_net = nn.GRU(**kwargs)
-            elif self.jagged_mode == 'lstm':
-                self.jagged_net = nn.LSTM(**kwargs)
-            else:
-                mode_list = ['vanilla_rnn', 'lstm', 'gru', 'deepset']
-                raise ValueError("The jagged mode '%s' is not supported. Supported modes"
-                                 " are %s." % (yaml_jagged_dict['mode'], mode_list))
+            self.input_size = dataset.jagged_input_size
+            self.kwargs = _get_kwargs(yaml_jagged_dict)
+            self.kwargs.update({'input_size': self.input_size})
+            self._pick_network(yaml_jagged_dict)
+
+    def _pick_network(self, yaml_jagged_dict):
+        self.jagged_mode = yaml_jagged_dict['mode']
+        if self.jagged_mode == 'deepset':
+            self.jagged_net = DeepSetNetwork(**self.kwargs)
+        elif self.jagged_mode == 'vanilla_rnn':
+            self.jagged_net = nn.RNN(**self.kwargs)
+        elif self.jagged_mode == 'gru':
+            self.jagged_net = nn.GRU(**self.kwargs)
+        elif self.jagged_mode == 'lstm':
+            self.jagged_net = nn.LSTM(**self.kwargs)
+        else:
+            mode_list = ['vanilla_rnn', 'lstm', 'gru', 'deepset']
+            raise ValueError("The jagged mode '%s' is not supported. Supported modes"
+                             " are %s." % (yaml_jagged_dict['mode'], mode_list))
 
     def forward(self, X):
-        if self._use_jagged_net and X != []:
-            X = X.squeeze(0).unsqueeze(1)
-            jagged_output = self.jagged_net(X)
+        if self._use_jagged_net and not _is_empty(X):
+            jagged_output = self.jagged_net(X.squeeze(0))
             return _parse_output(self.jagged_mode, jagged_output, -1)
         return X
 
@@ -192,21 +206,24 @@ class AwkwardObjectNet(nn.Module):
         self._use_object_net = dataset.use_object_data
         if self._use_object_net:
             yaml_object_dict = yaml_dict['object_fields']
-            kwargs = _get_kwargs(yaml_object_dict)
-            mode = yaml_object_dict['mode']
-            if mode == 'deepset':
-                self.object_net = AwkwardDeepSetDoubleJagged(**kwargs)
-            elif mode in ['vanilla_rnn', 'lstm', 'gru']:
-                nonlinearity = yaml_dict['nonlinearity'] if 'nonlinearity' in yaml_dict else 'tanh'
-                kwargs.update({'mode': mode, 'nonlinearity': nonlinearity})
-                self.object_net = AwkwardRNNDoubleJagged(**kwargs)
-            else:
-                mode_list = ['vanilla_rnn', 'lstm', 'gru', 'deepset']
-                raise ValueError("The object mode '%s' is not supported. Supported modes"
-                                 " are %s." % (mode, mode_list))
+            self.kwargs = _get_kwargs(yaml_object_dict)
+            self._pick_network(yaml_object_dict)
+
+    def _pick_network(self, yaml_object_dict):
+        mode = yaml_object_dict['mode']
+        nonlinearity = yaml_object_dict['nonlinearity'] if 'nonlinearity' in yaml_object_dict else 'tanh'
+        if mode == 'deepset':
+            self.object_net = AwkwardDeepSetDoubleJagged(**self.kwargs)
+        elif mode in ['vanilla_rnn', 'lstm', 'gru']:
+            self.kwargs.update({'mode': mode, 'nonlinearity': nonlinearity})
+            self.object_net = RNNDoubleStacked(**self.kwargs)
+        else:
+            mode_list = ['vanilla_rnn', 'lstm', 'gru', 'deepset']
+            raise ValueError("The object mode '%s' is not supported. Supported modes"
+                             " are %s." % (mode, mode_list))
 
     def forward(self, X):
-        if self._use_object_net and X != []:
+        if self._use_object_net and not _is_empty(X):
             return self.object_net(X)
         return X
 
@@ -222,23 +239,10 @@ class AwkwardNestedNet(nn.Module):
             self._init_subnetworks(nested_yaml_dict, dataset)
 
             # initialize network that takes subnetworks as input
-            kwargs = _get_kwargs(nested_yaml_dict)
+            self.kwargs = _get_kwargs(nested_yaml_dict)
             self.nested_mode = nested_yaml_dict['mode']
-            kwargs.update({'input_size': _get_nested_network_input_size(nested_yaml_dict, dataset)})
-            if self.nested_mode == 'deepset':
-                self.nested_net = AwkwardDeepSetSingleJagged(**kwargs)
-            elif self.nested_mode == 'vanilla_rnn':
-                self.nested_net = nn.RNN(**kwargs)
-            elif self.nested_mode == 'gru':
-                self.nested_net = nn.GRU(**kwargs)
-            elif self.nested_mode == 'lstm':
-                self.nested_net = nn.LSTM(**kwargs)
-            elif self.nested_mode == 'mlp':
-                self.nested_net = MLP(**kwargs)
-            else:
-                mode_list = ['vanilla_rnn', 'lstm', 'gru', 'deepset', 'mlp']
-                raise ValueError("The nested mode '%s' is not supported. Supported modes"
-                                 " are %s." % (nested_yaml_dict['mode'], mode_list))
+            self.kwargs.update({'input_size': _get_nested_network_input_size(nested_yaml_dict, dataset)})
+            self._pick_network(nested_yaml_dict)
         return
 
     def _init_subnetworks(self, nested_yaml_dict, dataset):
@@ -248,17 +252,34 @@ class AwkwardNestedNet(nn.Module):
             if dataset_i.use_dataset:
                 self.nested_subnetworks.append(AwkwardYaml(field_i, dataset_i, name_i))
 
+    def _pick_network(self, nested_yaml_dict):
+        if self.nested_mode == 'deepset':
+            self.nested_net = DeepSetNetwork(**self.kwargs)
+        elif self.nested_mode == 'vanilla_rnn':
+            self.nested_net = nn.RNN(**self.kwargs)
+        elif self.nested_mode == 'gru':
+            self.nested_net = nn.GRU(**self.kwargs)
+        elif self.nested_mode == 'lstm':
+            self.nested_net = nn.LSTM(**self.kwargs)
+        elif self.nested_mode == 'mlp':
+            self.nested_net = MLP(**self.kwargs)
+        else:
+            mode_list = ['vanilla_rnn', 'lstm', 'gru', 'deepset', 'mlp']
+            raise ValueError("The nested mode '%s' is not supported. Supported modes"
+                             " are %s." % (nested_yaml_dict['mode'], mode_list))
+
     def forward(self, X):
-        if not self._use_nested_net or X == []:
+        if not self._use_nested_net or _is_empty(X):
             return []
         subnested_output = self._forward_subnest_networks(X)
-        return self.nested_net(subnested_output)
+        nest_output = self.nested_net(subnested_output)
+        return _parse_output(self.nested_mode, nest_output, -1)
 
     def _forward_subnest_networks(self, X):
         subnested_output = []
         for net, x_nest in zip(self.nested_subnetworks, X):
             sub_output = net(x_nest)
-            output = _parse_output(self.nested_mode, sub_output, net.output_size)
+            output = _parse_output(net.output_mode, sub_output, net.output_size)
             if self.nested_mode == 'mlp':
                 subnested_output = _append(subnested_output, output, axis=2)
             elif output != []:
@@ -287,16 +308,17 @@ class AwkwardYaml(nn.Module):
 
     def _init_output_network(self, dataset):
         kwargs = _get_kwargs(self.yaml_dict)
-        self.output_size = kwargs['output_size']
-        kwargs.update({'input_size': _get_output_network_input_size(self.yaml_dict, dataset)})
         self.output_mode = self.yaml_dict['mode']
         if self.output_mode == 'deepset':
-            self.output_net = AwkwardDeepSetSingleJagged(**kwargs)
+            self.output_size = kwargs['output_size']
+            self.output_net = DeepSetNetwork(input_size=1, **kwargs)
         elif self.output_mode == 'mlp':
+            self.output_size = kwargs['output_size']
+            kwargs.update({'input_size': _get_output_network_input_size(self.yaml_dict, dataset)})
             self.output_net = MLP(**kwargs)
         else:
             mode_list = ['mlp', 'deepset']
-            raise ValueError("The mode '%s' is not supported. Supported modes"
+            raise ValueError("The awkward block mode '%s' is not supported. Supported modes"
                              " are %s." % (self.output_mode, mode_list))
 
     def forward(self, X):
@@ -315,14 +337,14 @@ class AwkwardYaml(nn.Module):
         return self._forward_output_network(latent_state)
 
     def _forward_output_network(self, X):
-        if X == []:
+        if _is_empty(X):
             return []
         output = self.output_net(X)
         return self._forward_output_nonlinearity(output)
 
     def _forward_output_nonlinearity(self, output):
         if self.topnetwork:
-            x = self.fc(output)[0] #TODO: look at this again later
+            x = self.fc(output)[0]  # TODO: look at this again later
             y = F.log_softmax(x, dim=1)
             return y
         return output

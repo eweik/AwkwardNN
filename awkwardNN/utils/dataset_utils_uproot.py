@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import uproot_methods
 import awkwardNN.utils.root_utils_uproot as root_utils
 import awkward
@@ -55,11 +56,11 @@ def _columns2rows(roottree, column_dict):
 
 def _columns2rows_fixed(column_dict):
     data = np.asarray(list(column_dict.values()), dtype=np.float32)
-    event_list = np.expand_dims(data[0], axis=(1, 2))
+    event_list = torch.unsqueeze(torch.tensor(data[0]), dim=1)
     for field in data[1:]:
-        field = np.expand_dims(field, axis=(1, 2))
-        event_list = np.append(event_list, field, axis=2)
-    return event_list
+        field = torch.unsqueeze(torch.tensor(field), dim=1)
+        event_list = torch.cat((event_list, field), dim=1)
+    return event_list.unsqueeze(1)
 
 
 def _columns2rows_jagged(roottree, column_dict):
@@ -88,9 +89,11 @@ def _convert_to_float32(jagged_events):
     new_jagged_events = []
     for event in jagged_events:
         if event.size == 0:
-            new_jagged_events.append([])
+            new_jagged_events.append(torch.tensor([]))
         else:
-            new_jagged_events.append(np.asarray(event, dtype=np.float32))
+            event = torch.tensor(event, dtype=torch.float32)
+            event = event.unsqueeze(1)
+            new_jagged_events.append(event)
     return new_jagged_events
 
 
@@ -116,8 +119,8 @@ def _append_object(event_list, field):
 def _expand_object_dim(event_list):
     new_event_list = []
     for event in event_list:
-        event = [np.asarray(i, dtype=np.float32) for i in event]
-        new_event = [np.expand_dims(i, axis=(1, 2)) for i in event]
+        event = [torch.tensor(i, dtype=torch.float32) for i in event]
+        new_event = [i.view(-1, 1, 1) for i in event]
         new_event_list.append(new_event)
     return new_event_list
 

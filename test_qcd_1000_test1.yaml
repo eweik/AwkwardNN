@@ -1,68 +1,58 @@
 event:
-  embed_dim: 32
-  mode: mlp
-  hidden_sizes: (32, 16)
+  embed_dim: 60
+  mode: deepset
   nonlinearity: relu
-  fixed_fields:
-    embed_dim: 16
-    mode: mlp
-    hidden_sizes: (80, 40)
-    nonlinearity: relu
-    fields:
-    - Event_size
-    - Particle_size
-    - Track_size
-    - Tower_size
-    - Jet_size
-    - Electron_size
   nested_fields:
-    embed_dim: 32
-    mode: mlp
-    hidden_sizes: (60, 50)
-    nonlinearity: relu
+    embed_dim: 50
+    mode: lstm
     fields:
-    - Particle:
-        embed_dim: 40
-        mode: mlp
-        hidden_sizes: (64, 32)
-        nonlinearity: relu
-        jagged_fields:
-          embed_dim: 40
-          mode: vanilla_rnn
-          nonlinearity: relu
-          fields:
-          - Particle.M1
-          - Particle.M2
-          - Particle.Charge
-          - Particle.Mass
-          - Particle.E
-          - Particle.Px
-          - Particle.Py
-          - Particle.Pz
-          - Particle.P
-          - Particle.PT
-          - Particle.Eta
-          - Particle.Phi
-          - Particle.Rapidity
     - Jet:
-        embed_dim: 32
-        mode: mlp
-        hidden_sizes: (124, 32)
-        nonlinearity: relu
+        embed_dim: 64
+        mode: deepset
+        phi_sizes: (100, 64)
+        rho_sizes: (100, 64)
+        nonlinearity: tanh
         jagged_fields:
-          embed_dim: 30
-          mode: vanilla_rnn
-          nonlinearity: relu
+          embed_dim: 64
+          mode: lstm
           fields:
           - Jet.PT
           - Jet.Eta
           - Jet.Phi
           - Jet.T
           - Jet.Mass
+          - Jet.DeltaEta
+          - Jet.DeltaPhi
+          - Jet.TauTag
+          - Jet.Charge
         object_fields:
-          embed_dim: 32
+          embed_dim: 64
           mode: vanilla_rnn
-          nonlinearity: relu
+          nonlinearity: tanh
           fields:
           - Jet.Constituents
           - Jet.Particles
+    - FatJet:
+        embed_dim: 64
+        mode: mlp
+        hidden_sizes: (64, 32)
+        rho_sizes: (64, 32)
+        nonlinearity: tanh
+        jagged_fields:
+          embed_dim: 64
+          mode: gru
+          fields:
+          - FatJet.PT
+          - FatJet.Eta
+          - FatJet.Phi
+          - FatJet.T
+          - FatJet.Mass
+          - FatJet.TauTag
+          - FatJet.Charge
+        object_fields:
+          embed_dim: 50
+          mode: vanilla_rnn
+          nonlinearity: tanh
+          fields:
+          - FatJet.Constituents
+          - FatJet.Particles

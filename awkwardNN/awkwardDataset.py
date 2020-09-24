@@ -13,11 +13,13 @@ def _get_input_size(dataset):
     if dataset == []:
         return 0
     if len(dataset[0]) > 0:
-        return len(dataset[0][0])
-    else:
+        if isinstance(dataset[0], torch.Tensor):
+            return dataset[0].shape[-1]
+        return 1  # it is an object interpreted data
+    else:  # in case there are empty entries
         for i in dataset:
             if len(i) != 0:
-                return len(i[0])
+                return i[0].shape[-1]
     return 0
 
 
@@ -30,7 +32,7 @@ def _all_are_false(A, B, C, D):
 def _get_correct_y(y1, y2, y3, y4):
     # in case on the y's is an empty list because no fields were listed in yaml
     for i in [y1, y2, y3, y4]:
-        if i != []:
+        if i.nelement() != 0:
             return i
 
 
@@ -85,7 +87,7 @@ class AwkwardDatasetFromYaml(Dataset):
             return
 
         self._length = sum([len(tree['roottree']) for tree in roottree_dict_list])
-        self._target_size = len(set([tree['target'] for tree in roottree_dict_list]))
+        self.target_size = len(set([tree['target'] for tree in roottree_dict_list]))
 
     def __len__(self):
         return self._length
@@ -99,7 +101,7 @@ class AwkwardDatasetFromYaml(Dataset):
         X_object, y_object = self._get_object_item(item)
         X_nested, y_nested = self._get_nested_item(item)
         y = _get_correct_y(y_fixed, y_jagged, y_nested, y_object)
-        return (X_fixed, X_jagged, X_object, X_nested), y
+        return [X_fixed, X_jagged, X_object, X_nested], y
 
     ########################################################################
     #                     helper functions for init                        #
@@ -143,12 +145,12 @@ class AwkwardDatasetFromYaml(Dataset):
     def _get_fixed_item(self, item):
         if self._use_fixed_data:
             return self._fixed_dataset[item]
-        return [], []
+        return torch.tensor([]), torch.tensor([])
 
     def _get_jagged_item(self, item):
         if self._use_jagged_data:
             return self._jagged_dataset[item]
-        return [], []
+        return torch.tensor([]), torch.tensor([])
 
     def _get_nested_item(self, item):
         X_nested, y_nested = [], []
@@ -160,15 +162,12 @@ class AwkwardDatasetFromYaml(Dataset):
     def _get_object_item(self, item):
         if self._use_object_data:
             return self._object_dataset[item]
-        return [], []
+        return torch.tensor([]), torch.tensor([])
+
 
     ########################################################################
     #                        misc. helper functions                        #
     ########################################################################
-
-    @property
-    def target_size(self):
-        return self._target_size
 
     @property
     def fixed_input_size(self):

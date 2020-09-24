@@ -4,3 +4,4 @@ uproot
 awkward
 scikit-learn
 pyyaml
+graphviz

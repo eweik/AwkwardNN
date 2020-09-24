@@ -3,14 +3,13 @@ import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, random_split
+import numpy as np
 import shutil
 import os
 import yaml
 
 from awkwardNN.yamlTree import YamlTree
 from awkwardNN.awkwardDataset import AwkwardDataset, AwkwardDatasetFromYaml
-from awkwardNN.nets.awkwardRNN import AwkwardRNNDoubleJagged
-from awkwardNN.nets.deepset import AwkwardDeepSetDoubleJagged
 from awkwardNN.nets.awkwardYaml import AwkwardYaml
 import awkwardNN.utils.utils as utils
 import awkwardNN.utils.yaml_utils as yaml_utils
@@ -132,6 +131,7 @@ class awkwardNNBase(ABC):
 
     def _train_one_epoch(self, epoch):
         losses, accs = utils.AverageMeter(), utils.AverageMeter()
+        batch_loss, batch_accs = utils.AverageMeter(), utils.AverageMeter()
         self.model.train()
         for i, (x, y) in enumerate(self.trainloader):
             # x, y = x.to(self.device), y.to(self.device)
@@ -144,12 +144,17 @@ class awkwardNNBase(ABC):
                 acc = utils.get_accuracy(y, y_hat)
                 loss.backward()
                 self.optimizer.step()
+
+                # update sample information
+                batch_loss.update(loss.item(), len(x))
+                batch_accs.update(acc.item(), len(x))
                 losses.update(loss.item(), len(x))
                 accs.update(acc.item(), len(x))
 
             if self.verbose and (i % self.print_freq == 0):
-                print_train_stat(epoch + 1, i + self.print_freq,
-                                 self.trainsize, loss, acc)
+                print_train_stat(epoch + 1, i + self.print_freq, self.trainsize,
+                                 batch_loss.avg, batch_accs.avg)
+                batch_loss, batch_accs = utils.AverageMeter(), utils.AverageMeter()
         if self.learning_rate == 'adaptive':
             self.scheduler.step()
         return losses.avg, accs.avg
@@ -173,7 +178,12 @@ class awkwardNNBase(ABC):
     def _init_test(self, dataset):
         self.testsize = len(dataset)
         self.testloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
+        self._init_update_algorithm()
         self._load_checkpoint(best=True)
+
+    ####################################################################
+    #                       helper init functions                     #
+    ####################################################################
 
     def _init_dataloaders(self):
         if self.early_stopping:
@@ -189,47 +199,6 @@ class awkwardNNBase(ABC):
             self.trainloader = DataLoader(self.dataset,
                                           batch_size=self.batch_size,
                                           shuffle=self.shuffle)
-
-    def _update_loss_acc(self, train_loss, train_acc, valid_loss, valid_acc):
-        self._train_losses.append(train_loss)
-        self._train_accs.append(train_acc)
-        self._valid_losses.append(valid_loss)
-        self._valid_accs.append(valid_acc)
-
-    def _save_checkpoint(self, state, is_best):
-        filename = self.model_name + '_ckpt.pth'
-        ckpt_path = os.path.join(self.ckpt_dir, filename)
-        torch.save(state, ckpt_path)
-        if is_best:
-            filename = self.model_name + '_model_best.pth'
-            shutil.copyfile(ckpt_path, os.path.join(self.ckpt_dir, filename))
-        return
-
-    def _load_checkpoint(self, best=False):
-        if self.verbose:
-            print("[*] Loading model from {}".format(self.ckpt_dir))
-        filename = self.model_name + '_ckpt.pth'
-        if best:
-            filename = self.model_name + '_model_best.pth'
-        ckpt_path = os.path.join(self.ckpt_dir, filename)
-        ckpt = torch.load(ckpt_path)
-        self._load_variables(filename, ckpt, best)
-        return
-
-    def _load_variables(self, filename, checkpoint, best):
-        self.start_epoch = checkpoint['epoch']
-        self.best_valid_acc = checkpoint['best_valid_acc']
-        self.best_train_loss = checkpoint['best_train_loss']
-        self.model.load_state_dict(checkpoint['model_state'])
-        self.optimizer.load_state_dict(checkpoint['optim_state'])
-        if self.learning_rate == 'adaptive':
-            self.scheduler.load_state_dict(checkpoint['sched_state'])
-        msg = "[*] Loaded {} checkpoint @ epoch {}".format(filename, self.start_epoch)
-        if best:
-            msg += " with best valid acc of {:.3f}".format(self.best_valid_acc)
-        if self.verbose:
-            print(msg)
-        return
 
     def _init_update_algorithm(self):
         if self.solver == 'adam':
@@ -249,6 +218,16 @@ class awkwardNNBase(ABC):
             self.scheduler = lr_scheduler.StepLR(self.optimizer,
                                                 step_size=self.lr_decay_step,
                                                 gamma=self.lr_decay_factor)
+
+    ####################################################################
+    #                  functions to monitor training                   #
+    ####################################################################
+
+    def _update_loss_acc(self, train_loss, train_acc, valid_loss, valid_acc):
+        self._train_losses.append(train_loss)
+        self._train_accs.append(train_acc)
+        self._valid_losses.append(valid_loss)
+        self._valid_accs.append(valid_acc)
 
     def _stop_training(self, valid_acc, train_loss):
         if self.early_stopping:
@@ -281,100 +260,71 @@ class awkwardNNBase(ABC):
         else:
             is_best = train_loss > self.best_train_loss
             self.best_valid_acc = max(valid_acc, self.best_valid_acc)
-        state = {'epoch': epoch+1,
+        self._save_variables(epoch, is_best)
+        return
+
+    ####################################################################
+    #                   functions for loading model                    #
+    ####################################################################
+
+    def _load_checkpoint(self, best=False):
+        if self.verbose:
+            print("[*] Loading model from {}".format(self.ckpt_dir))
+        filename = self.model_name + '_ckpt.pth'
+        if best:
+            filename = self.model_name + '_model_best.pth'
+        ckpt_path = os.path.join(self.ckpt_dir, filename)
+        ckpt = torch.load(ckpt_path)
+        self._load_variables(filename, ckpt, best)
+        return
+
+    def _load_variables(self, filename, checkpoint, best):
+        self.start_epoch = checkpoint['epoch']
+        self.best_valid_acc = checkpoint['best_valid_acc']
+        self.best_train_loss = checkpoint['best_train_loss']
+        self.model.load_state_dict(checkpoint['model_state'])
+        self.optimizer.load_state_dict(checkpoint['optim_state'])
+        if self.learning_rate == 'adaptive':
+            self.scheduler.load_state_dict(checkpoint['sched_state'])
+        msg = "[*] Loaded {} checkpoint @ epoch {}".format(filename, self.start_epoch)
+        if best:
+            msg += " with best valid acc of {:.3f}".format(self.best_valid_acc)
+        if self.verbose:
+            print(msg)
+        return
+
+    def _load_model_target_size(self, best=False):
+        filename = self.model_name + '_ckpt.pth'
+        if best:
+            filename = self.model_name + '_model_best.pth'
+        ckpt_path = os.path.join(self.ckpt_dir, filename)
+        ckpt = torch.load(ckpt_path)
+        return ckpt['target_size']
+
+    ####################################################################
+    #                   functions for saving model                     #
+    ####################################################################
+
+    def _save_variables(self, epoch, is_best):
+        state = {'epoch': epoch + 1,
                  'model_state': self.model.state_dict(),
                  'optim_state': self.optimizer.state_dict(),
                  'best_valid_acc': self.best_valid_acc,
-                 'best_train_loss': self.best_train_loss}
+                 'best_train_loss': self.best_train_loss,
+                 'target_size': self.dataset.target_size}
         if self.learning_rate == 'adaptive':
             state.update({'sched_state': self.scheduler.state_dict()})
         self._save_checkpoint(state, is_best)
+
+    def _save_checkpoint(self, state, is_best):
+        filename = self.model_name + '_ckpt.pth'
+        ckpt_path = os.path.join(self.ckpt_dir, filename)
+        torch.save(state, ckpt_path)
+        if is_best:
+            filename = self.model_name + '_model_best.pth'
+            shutil.copyfile(ckpt_path, os.path.join(self.ckpt_dir, filename))
         return
 
-
-class awkwardNN(awkwardNNBase):
-    def __init__(self, mode='rnn', *,
-                 hidden_size=64, num_layers=2,
-                 phi_sizes=(64, 64), rho_sizes=(64, 64),
-                 activation='relu', **kwargs):
-
-        super().__init__(**kwargs)
-        self.mode = mode
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.phi_sizes = phi_sizes
-        self.rho_sizes = rho_sizes
-        self.activation = activation
-        # _validate_hyperparameters(self)
-
-    def train(self, X, y):
-        self._init_training(X, y)
-        super().train()
-        return
-
-    def _init_training(self, X, y):
-        self._init_dataloaders(X, y)
-        self._init_model()
-        super()._init_training()
-        return
-
-    def test(self, X, y):
-        self._init_test(X, y)
-        super.test()
-
-    def _init_test(self, X, y):
-        dataset = AwkwardDataset(X, y)
-        super()._init_test(dataset)
-
-    def predict(self, X):
-        predictions = []
-        self._init_test(X, y=[])
-        self.model.eval()
-        for i, x in enumerate(self.testloader):
-            x = x.to(self.device)
-            with torch.no_grad():
-                y_hat = self.model(x)
-                _, prediction = torch.max(y_hat, 1)
-                predictions.append(prediction)
-        return predictions
-
-    def predict_proba(self, X):
-        pred_proba = []
-        self._init_test(X, y=[])
-        self.model.eval()
-        for i, x in enumerate(self.testloader):
-            x = x.to(self.device)
-            with torch.no_grad():
-                y_hat = self.model(x)
-                pred_proba.append(torch.exp(y_hat))
-        return pred_proba
-
-    def predict_log_proba(self, X):
-        pred_log_proba = []
-        self._init_test(X, y=[])
-        self.model.eval()
-        for i, x in enumerate(self.testloader):
-            x = x.to(self.device)
-            with torch.no_grad():
-                y_hat = self.model(x)
-                pred_log_proba.append(y_hat)
-        return pred_log_proba
-
-    def _init_dataloaders(self, X, y):
-        self.dataset = AwkwardDataset(X, y)
-        super()._init_dataloaders()
-
-    def _init_model(self):
-        output_size = self.dataset.output_size
-        kwargs = {'output_size': output_size, 'activation': self.activation,
-                  'dropout': self.dropout}
-        if self.mode == 'deepset':
-            kwargs.update({'phi_sizes': self.phi_sizes, 'rho_sizes': self.rho_sizes})
-            self.model = AwkwardDeepSetDoubleJagged(**kwargs)
-        else:
-            kwargs.update({'mode': self.mode, 'hidden_size': self.hidden_size,
-                           'num_layers': self.num_layers})
-            self.model = AwkwardRNNDoubleJagged(**kwargs)
 
 
 class awkwardNN_fromYaml(awkwardNNBase):
@@ -411,41 +361,43 @@ class awkwardNN_fromYaml(awkwardNNBase):
     def _init_test(self, rootfile_dict_list):
         roottree_dict_list = root_utils.get_roottree_dict_list(rootfile_dict_list)
         self.dataset = AwkwardDatasetFromYaml(roottree_dict_list, self.yaml_dict)
+        self.dataset.target_size = self._load_model_target_size(best=True)
+        self._init_model()
         super()._init_test(self.dataset)
 
     def predict(self, rootfile):
         self._init_test({'rootfile': rootfile, 'target': -1})
         predictions = []
         self.model.eval()
-        for i, x in enumerate(self.testloader):
+        for i, (x, _) in enumerate(self.testloader):
             # x = x.to(self.device)
             with torch.no_grad():
                 y_hat = self.model(x)
                 _, prediction = torch.max(y_hat, 1)
                 predictions.append(prediction)
-        return predictions
+        return np.array(predictions)
 
     def predict_proba(self, rootfile):
-        self._init_test({'rootfile': rootfile, 'target': -1})
+        self._init_test([{'rootfile': rootfile, 'target': -1}])
         pred_proba = []
         self.model.eval()
-        for i, x in enumerate(self.testloader):
+        for i, (x, _) in enumerate(self.testloader):
             # x = x.to(self.device)
             with torch.no_grad():
                 y_hat = self.model(x)
-                pred_proba.append(torch.exp(y_hat))
-        return pred_proba
+                pred_proba.append(torch.exp(y_hat).numpy())
+        return np.array(pred_proba)
 
     def predict_log_proba(self, rootfile):
         self._init_test({'rootfile': rootfile, 'target': -1})
         pred_log_proba = []
         self.model.eval()
-        for i, x in enumerate(self.testloader):
+        for i, (x, _) in enumerate(self.testloader):
             # x = x.to(self.device)
             with torch.no_grad():
                 y_hat = self.model(x)
                 pred_log_proba.append(y_hat)
-        return pred_log_proba
+        return np.array(pred_log_proba)
 
     def _init_dataloaders(self, rootfile_dict_list):
         roottree_dict_list = root_utils.get_roottree_dict_list(rootfile_dict_list)

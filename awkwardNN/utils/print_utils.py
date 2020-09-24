@@ -13,8 +13,8 @@ def print_train_stat(epoch, batch_idx, trainsize, loss, acc):
         batch_idx,
         trainsize,
         100. * batch_idx / trainsize,
-        loss.item(),
-        acc.item()))
+        loss,
+        acc))
     return
 
 
