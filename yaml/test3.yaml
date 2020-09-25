@@ -1,0 +1,102 @@
+event:
+  embed_dim: 64
+  mode: mlp
+  hidden_sizes: (64, 64)
+  nonlinearity: relu
+  fixed_fields:
+    embed_dim: 64
+    mode: mlp
+    hidden_sizes: (64, 64)
+    nonlinearity: relu
+    fields:
+    - Event_size
+    - Particle_size
+    - Track_size
+    - Tower_size
+    - EFlowTrack_size
+    - EFlowPhoton_size
+    - EFlowNeutralHadron_size
+    - Jet_size
+    - Electron_size
+    - Photon_size
+    - Muon_size
+    - FatJet_size
+    - MissingET_size
+    - ScalarHT_size
+  nested_fields:
+    embed_dim: 64
+    mode: mlp
+    hidden_sizes: (64, 64)
+    nonlinearity: relu
+    fields:
+    - Event:
+        embed_dim: 64
+        mode: mlp
+        hidden_sizes: (64, 64)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: lstm
+          fields:
+          - Event.Weight
+          - Event.Scale
+          - Event.AlphaQED
+          - Event.AlphaQCD
+          - Event.ID1
+          - Event.ID2
+          - Event.X1
+          - Event.X2
+          - Event.ScalePDF
+          - Event.PDF1
+          - Event.PDF2
+    - Track:
+        embed_dim: 64
+        mode: mlp
+        hidden_sizes: (64, 64)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: lstm
+          fields:
+          - Track.Charge
+          - Track.P
+          - Track.PT
+          - Track.Eta
+          - Track.Phi
+          - Track.T
+          - Track.X
+          - Track.Y
+          - Track.Z
+        bad_keys:
+        - Track.fBits
+    - Jet:
+        embed_dim: 64
+        mode: mlp
+        hidden_sizes: (64, 64)
+        nonlinearity: relu
+        jagged_fields:
+          embed_dim: 64
+          mode: lstm
+          fields:
+          - Jet.PT
+          - Jet.Eta
+          - Jet.Phi
+          - Jet.T
+          - Jet.Mass
+          - Jet.DeltaEta
+          - Jet.DeltaPhi
+          - Jet.TauTag
+          - Jet.Charge
+          - Jet.EhadOverEem
+          - Jet.NCharged
+          - Jet.NNeutrals
+          - Jet.Beta
+          - Jet.BetaStar
+          - Jet.MeanSqDeltaR
+        object_fields:
+          embed_dim: 64
+          mode: vanilla_rnn
+          nonlinearity: relu
+          fields:
+          - Jet.Constituents
+          - Jet.Particles

@@ -1,7 +1,9 @@
 from graphviz import Digraph
+from awkwardNN.utils.yaml_utils import get_yaml_dict_list
 
 
-def visualize_network(yaml_dict, fontsize=12):
+def visualize_network(yaml_filename, fontsize=12):
+    yaml_dict = get_yaml_dict_list(yaml_filename)
     g = Digraph("AwkwardNN", format="png",
                 node_attr={'shape': 'box', 'fontsize': str(fontsize)},
                 graph_attr={'rankdir': 'BT'})
